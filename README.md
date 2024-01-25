@@ -1,9 +1,16 @@
 # vrs-python-testing
 testing vcf annotation and variant normalization
 
-# Setup
+## Setup
 
-`
-bash setup.sh
+```
+conda env create -f env.yaml
 conda activate vrs-python
-`
+bash setup.sh
+```
+
+## Testing
+```
+conda activate vrs-python
+pytest .
+```
