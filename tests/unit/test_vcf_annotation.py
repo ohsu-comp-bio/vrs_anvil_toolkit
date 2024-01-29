@@ -6,6 +6,7 @@ from ga4gh.vrs.extras.vcf_annotation import VCFAnnotator
 
 TEST_DATA_DIR = "tests/data"
 
+@pytest.fixture
 def get_latest_seqrepo_dir():
     with open(".env") as f:
         for line in f:
