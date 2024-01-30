@@ -8,13 +8,7 @@ TEST_DATA_DIR = "tests/data"
 
 @pytest.fixture
 def get_latest_seqrepo_dir():
-    with open(".env") as f:
-        for line in f:
-            # Ignore comments and empty lines
-            if line.strip() and not line.strip().startswith('#'):
-                key, value = line.strip().split('=', 1)
-                if key == "SEQREPO_LATEST_DIR":
-                    return value
+    return os.environ.get('SEQREPO') + "/latest"
 
 def test_small_vcf_annotation():
     input_vcf = f"{TEST_DATA_DIR}/test_vcf_input.vcf"
