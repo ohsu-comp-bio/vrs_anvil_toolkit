@@ -30,7 +30,7 @@ def test_small_vcf_annotation(seqrepo_dir, delete_output, request):
    
    # create annotated vcf test file 
    input_vcf = f"{TEST_DATA_DIR}/test_vcf_input.vcf"
-   expected_vcf = f"{TEST_DATA_DIR}/test_vcf_output.vcf"
+   expected_vcf = f"{TEST_DATA_DIR}/expected_vcf_output.vcf"
    output_vcf = f"{TEST_DATA_DIR}/test_vcf_output.vcf"
    request.node.output_vcf = output_vcf
 
