@@ -1,8 +1,6 @@
 #!/bin/bash
 
 # create python package
-python -m venv venv
-source venv/bin/activate
 pip install -r requirements.txt
 
 # # download seqrepo data locally
@@ -30,5 +28,3 @@ make install
 export PERL5LIB="$VCF_TOOLS_DIR/src/perl/"
 export VCFTOOLS="$VCFTOOLS_DIR/src/cpp/vcftools"
 echo "VCF_TOOLS=$VCF_TOOLS" >> .env
-
-deactivate
