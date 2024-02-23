@@ -81,7 +81,7 @@ def meta_kb(id, recent=True, log=False):
     if recent:
         if log: print("recent elasticbeanstalk api (VRS 2.0 models)")
         response = requests.get("http://metakb-dev-eb.us-east-2.elasticbeanstalk.com" \
-                                f"/api/v2/search/studies?variation={id}&detail=false")
+                                f"/api/v2/search/studies?variation={id}")
     else:
         if log: print("old api (VRS 1.3 models)")
         response = requests.get("https://dev-search.cancervariants.org" \
