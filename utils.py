@@ -107,11 +107,8 @@ def allele_dict_to_hgvs(allele_dict):
     allele = models.Allele(**allele_dict)
     return translator.translate_to(allele, fmt)
 
-def parallelize(vrs_decorator, vrs_objects, progress_interval=500, limit=None):
+def parallelize(vrs_decorator, vrs_objects, worker_count, progress_interval=500, limit=None):
     """harvest data from service"""
-        
-    # number of workers
-    worker_count = os.cpu_count()
 
     manager = multiprocessing.Manager()
     results = manager.list()

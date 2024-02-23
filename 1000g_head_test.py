@@ -70,7 +70,9 @@ if __name__ == "__main__":
     # ping metakb
     print("pinging metakb...")
     t = time()
-    hits = parallelize(meta_kb, vrs_ids, \
+    # number of workers
+    worker_count = 4*os.cpu_count()
+    hits = parallelize(meta_kb, vrs_ids, worker_count, \
         progress_interval=progress_interval, limit=num_ids_limit)
     print(f"metakb: {(time()-t):.2f} s")
 
