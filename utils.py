@@ -1,11 +1,11 @@
 import ast
+import json
 import logging
-
+import multiprocessing
+import os
 import pickle
 import pysam
-import os
 import requests
-import multiprocessing
 
 from biocommons.seqrepo import SeqRepo
 from datetime import datetime
@@ -13,8 +13,6 @@ from ga4gh.vrs import models
 from ga4gh.vrs.dataproxy import SeqRepoDataProxy
 from ga4gh.vrs.extras.translator import AlleleTranslator
 from ga4gh.vrs.extras.vcf_annotation import VCFAnnotator
-
-import json
 
 def seqrepo_dir():
    with open(".env") as f:
@@ -25,15 +23,7 @@ def seqrepo_dir():
             if key == "SEQREPO_ROOT":
                return value + "/latest"
 
-def print_dict(d, indent=2):
-    """pretty print object as json"""
-    print(json.dumps(d, indent=indent))
-
-def print_percent(a, b):
-    "pretty print percentages"
-    print(f"{a}/{b} = {(100.0*a/b):.1f}%")
-
-def annotate_vcf(path, seqrepo_root_dir, require_validation=False):
+def annotate_vcf(path, require_validation=False):
     '''param stem: path of input vcf file'''
     stem = path.replace(".vcf", "")
     
@@ -42,8 +32,25 @@ def annotate_vcf(path, seqrepo_root_dir, require_validation=False):
     output_vcf = ""
     output_pkl = f"{stem}-vrs-objects.pkl"
 
-    vcf_annotator = VCFAnnotator(seqrepo_root_dir=seqrepo_root_dir)
+    vcf_annotator = VCFAnnotator(seqrepo_root_dir=seqrepo_dir())
     vcf_annotator.tlr.rle_seq_limit = None
+    vcf_annotator.annotate(vcf_in=input_vcf, vcf_out=output_vcf, \
+        vrs_pickle_out=output_pkl, require_validation=require_validation)
+    
+    return output_vcf, output_pkl
+
+def print_dict(d, indent=2):
+    """pretty print object as json"""
+    print(json.dumps(d, indent=indent))
+
+def print_percent(a, b):
+    "pretty print percentages"
+    print(f"{a}/{b} = {(100.0*a/b):.1f}%")
+
+def annotate_vcf(input_vcf, output_vcf, output_pkl, seqrepo_root_dir, require_validation=True, rle_seq_limit=50):
+    '''param stem: path of input vcf file'''
+    vcf_annotator = VCFAnnotator(seqrepo_root_dir=seqrepo_root_dir)
+    vcf_annotator.tlr.rle_seq_limit = rle_seq_limit
     vcf_annotator.annotate(vcf_in=input_vcf, vcf_out=output_vcf, \
         vrs_pickle_out=output_pkl, require_validation=require_validation)
     
@@ -84,24 +91,27 @@ def meta_kb(id, recent=True, log=False):
     
     if response_json['warnings'] == []:
         return (id, response_json)
+    else:
+        if log: print(response_json['warnings'])
 
-def meta_kb_by_hgvs(item):
-    # setup translator
-    seqrepo_root_dir = "/Users/quinnwaiwong/seqrepo/latest"
-    data_proxy = SeqRepoDataProxy(SeqRepo(seqrepo_root_dir))
+def num_variants(input_vcf):
+    # get total num_variants
+    vcf_reader = pysam.VariantFile(open(input_vcf, 'r'))
+    return sum(1 for _ in vcf_reader)
+
+def allele_dict_to_hgvs(allele_dict):
+    data_proxy = SeqRepoDataProxy(SeqRepo("/Users/quinnwaiwong/seqrepo/latest"))
     translator = AlleleTranslator(data_proxy)
     translator.rle_seq_limit=None
     fmt = "hgvs"
+    allele = models.Allele(**allele_dict)
+    return translator.translate_to(allele, fmt)
 
-    return meta_kb(item, translator=translator,fmt=fmt)
-
-def parallelize(vrs_decorator, vrs_objects, limit=None):
+def parallelize(vrs_decorator, vrs_objects, progress_interval=500, limit=None):
     """harvest data from service"""
         
-    # log progress
-    progress_interval = 500
     # number of workers
-    worker_count = 8
+    worker_count = os.cpu_count()
 
     manager = multiprocessing.Manager()
     results = manager.list()
@@ -115,9 +125,9 @@ def parallelize(vrs_decorator, vrs_objects, limit=None):
             c += 1
             if result:
                 results.append(result)
-            if limit and c == limit:
+            if c == limit:
                 break
-            if c % progress_interval == 0:
+            elif c % progress_interval == 0:
                 print(datetime.now().isoformat(), c)
     
     return results
