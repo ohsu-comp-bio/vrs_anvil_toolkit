@@ -61,9 +61,7 @@ def unpickle(file_name):
     with open(file_name, 'rb') as f:
         vrs_objects = pickle.load(f)
         for k, v in vrs_objects.items():
-            vrs_objects[k] = ast.literal_eval(v)
-    
-    return vrs_objects
+            yield k, v
 
 def meta_kb(id, recent=True, log=False):
     """Query metakb using vrs object"""
