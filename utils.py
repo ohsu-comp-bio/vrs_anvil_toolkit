@@ -16,6 +16,13 @@ from ga4gh.vrs.extras.translator import AlleleTranslator
 from ga4gh.vrs.extras.vcf_annotation import VCFAnnotator
 from pathlib import Path
 
+# get vrs ids
+def translate(gnomad_expr):
+    data_proxy = SeqRepoDataProxy(SeqRepo(seqrepo_dir())) # TODO: not working atm
+    translator = AlleleTranslator(data_proxy)
+    allele = translator._from_gnomad(gnomad_expr)
+    return (gnomad_expr, dict(allele))
+
 def seqrepo_dir():
    with open(".env") as f:
       for line in f:
