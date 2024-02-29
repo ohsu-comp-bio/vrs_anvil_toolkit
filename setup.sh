@@ -11,24 +11,17 @@ echo "SEQREPO_ROOT=$SEQREPO_ROOT" > .env
 mkdir $SEQREPO_ROOT
 seqrepo --root-directory $SEQREPO_ROOT pull --update-latest
 
+# setup bcftools
 cd ~
-curl -LJO https://github.com/vcftools/vcftools/tarball/master
+curl -LJO https://github.com/samtools/bcftools/releases/download/1.19/bcftools-1.19.tar.bz2
+BCF_TOOLS_TAR=$(ls -1t bcftools*.tar.bz2 | head -n 1)
+tar -xvf $BCF_TOOLS_TAR
+rm $BCF_TOOLS_TAR
 
-VCF_TOOLS_TAR=$(ls -1t vcftools*.tar.gz | head -n 1)
-tar -xzvf $VCF_TOOLS_TAR
-rm $VCF_TOOLS_TAR
-
-VCF_TOOLS_DIR=$(ls -1td vcftools* | head -n 1)
-cd $VCF_TOOLS_DIR
-echo "VCF_TOOLS_DIR=$VCF_TOOLS_DIR" >> .env
-
-./autogen.sh
+mv ~/bcftools*/ $BCF_TOOLS_DIR 
+cd $BCF_TOOLS_DIR
 ./configure prefix=$HOME
 make
 make install
-
-export PERL5LIB="$VCF_TOOLS_DIR/src/perl/"
-export VCFTOOLS="$VCFTOOLS_DIR/src/cpp/vcftools"
-echo "VCF_TOOLS=$VCF_TOOLS" >> .env
 
 deactivate

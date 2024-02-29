@@ -16,7 +16,7 @@ from utils import *
 
 if __name__ == "__main__":
     # input path
-    input_vcf_file_name = "1kGP.chr1.1000.vcf"
+    input_vcf_file_name = "1kGP.chr1.10.000.vcf"
     input_dir = "vcf"
     
     # output paths
@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     # metakb settings
     num_ids_limit = None # number of ids to process, None = all
-    progress_interval = 100
+    progress_interval = 2000
 
     # suppress DEBUG logs (1 per variant)
     logger = logging.getLogger("ga4gh.vrs.extras.vcf_annotation")
@@ -68,13 +68,35 @@ if __name__ == "__main__":
             for _, allele_dict in allele_dicts.items()]
             
     # ping metakb
+    ## ATTEMPT 2: ASYNC ##
+    import asyncio
+    import aiohttp
+
+    async def fetch_data(session, url):
+        async with session.get(url) as response:
+            return await response.json()
+
+    async def asyncify(ids):
+        urls = ["http://metakb-dev-eb.us-east-2.elasticbeanstalk.com" \
+        f"/api/v2/search/studies?variation={id}" for id in ids]
+
+        async with aiohttp.ClientSession() as session:
+            tasks = [fetch_data(session, url) for url in urls]
+            results = await asyncio.gather(*tasks)
+            return results
+    
+    t = time()
+    hits = asyncio.run(asyncify(vrs_ids)) 
+    print(f"metakb (async): {(time()-t):.2f} s")
+
+    ## ATTEMPT 1: PARALLEL ##
     print("pinging metakb...")
     t = time()
     # number of workers
-    worker_count = 4*os.cpu_count()
-    hits = parallelize(meta_kb, vrs_ids, worker_count, \
+    worker_count = 8*os.cpu_count()
+    hits = parallelize(metakb, vrs_ids, worker_count, \
         progress_interval=progress_interval, limit=num_ids_limit)
-    print(f"metakb: {(time()-t):.2f} s")
+    print(f"metakb (parallel): {(time()-t):.2f} s")
 
     # save and report hits
     with open(metakb_output_pkl, 'wb') as file:
@@ -83,5 +105,3 @@ if __name__ == "__main__":
     print("\nhits to ids queried...")
     total = num_ids_limit if num_ids_limit else len(vrs_ids)
     print_percent(len(hits), total)
-
-    

@@ -4,6 +4,7 @@ import logging
 import multiprocessing
 import os
 import pickle
+import subprocess
 import pysam
 import requests
 
@@ -13,6 +14,7 @@ from ga4gh.vrs import models
 from ga4gh.vrs.dataproxy import SeqRepoDataProxy
 from ga4gh.vrs.extras.translator import AlleleTranslator
 from ga4gh.vrs.extras.vcf_annotation import VCFAnnotator
+from pathlib import Path
 
 def seqrepo_dir():
    with open(".env") as f:
@@ -56,6 +58,19 @@ def annotate_vcf(input_vcf, output_vcf, output_pkl, seqrepo_root_dir, require_va
     
     return output_vcf, output_pkl
 
+def download_s3(url: str, outfile_path: Path) -> None:
+    """Download objects from public s3 bucket
+
+    :param url: URL for file in s3 bucket
+    :param outfile_path: Path where file should be saved
+    """
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()
+        with open(outfile_path, "wb") as h:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    h.write(chunk)
+
 def unpickle(file_name):
     """Unpickle vrs objects to single dict"""
     with open(file_name, 'rb') as f:
@@ -63,39 +78,37 @@ def unpickle(file_name):
         for k, v in vrs_objects.items():
             yield k, v
 
-def meta_kb(id, recent=True, log=False):
+def metakb(id, recent=True, log=False):
     """Query metakb using vrs object"""
-    # k, allele_dict = item
-    
-    # if translator is not None:
-    #     if log: print(f"by {fmt}...")
-    #     allele = models.Allele(**allele_dict)
-    #     _id = translator.translate_to(allele, fmt)
-    # else:
-    #     if log: print("by vrs id...")
-    #     _id = allele_dict["id"]
-        
         
     if recent:
-        if log: print("recent elasticbeanstalk api (VRS 2.0 models)")
+        if log:
+            print("recent elasticbeanstalk api (VRS 2.0 models)")
         response = requests.get("http://metakb-dev-eb.us-east-2.elasticbeanstalk.com" \
                                 f"/api/v2/search/studies?variation={id}")
     else:
-        if log: print("old api (VRS 1.3 models)")
+        if log:
+            print("old api (VRS 1.3 models)")
         response = requests.get("https://dev-search.cancervariants.org" \
                                 f"/api/v2/search?variation={id}&detail=false")
+    
+    if response.status_code >= 400:
+        print(f"API error: {response.text} ({response.status_code})")
+        return
     
     response_json = response.json()
     
     if response_json['warnings'] == []:
         return (id, response_json)
-    else:
-        if log: print(response_json['warnings'])
+    
+    if log:
+        print(response_json['warnings'])
+    return
 
-def num_variants(input_vcf):
+def get_num_variants(input_vcf):
     # get total num_variants
-    vcf_reader = pysam.VariantFile(open(input_vcf, 'r'))
-    return sum(1 for _ in vcf_reader)
+    return int(subprocess.run(f"grep -v '^#' {input_vcf} | wc -l", \
+              stdout=subprocess.PIPE, shell=True, check=True, text=True).stdout)
 
 def allele_dict_to_hgvs(allele_dict):
     data_proxy = SeqRepoDataProxy(SeqRepo("/Users/quinnwaiwong/seqrepo/latest"))
@@ -125,4 +138,8 @@ def parallelize(vrs_decorator, vrs_objects, worker_count, progress_interval=500,
             elif c % progress_interval == 0:
                 print(datetime.now().isoformat(), c)
     
-    return results
+    return list(results)
+
+def truncate(s, first_few, last_few):
+    "truncate string printing only first_few and last_few characters"
+    return f"{s[:first_few]}...{s[-last_few:]}"
