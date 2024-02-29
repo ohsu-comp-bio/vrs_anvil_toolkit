@@ -5,17 +5,15 @@ pip install -r ~/requirements.txt
 mkdir $SEQREPO_ROOT
 seqrepo --root-directory $SEQREPO_ROOT pull --update-latest
 
-# setup vcftools
+# setup bcftools
 cd ~
-curl -LJO https://github.com/vcftools/vcftools/tarball/master
+curl -LJO https://github.com/samtools/bcftools/releases/download/1.19/bcftools-1.19.tar.bz2
+BCF_TOOLS_TAR=$(ls -1t bcftools*.tar.bz2 | head -n 1)
+tar -xvf $BCF_TOOLS_TAR
+rm $BCF_TOOLS_TAR
 
-VCF_TOOLS_TAR=$(ls -1t vcftools*.tar.gz | head -n 1)
-tar -xzvf $VCF_TOOLS_TAR
-rm $VCF_TOOLS_TAR
-
-mv ~/vcftools*/ $VCF_TOOLS_DIR 
-cd $VCF_TOOLS_DIR
-./autogen.sh
+mv ~/bcftools*/ $BCF_TOOLS_DIR 
+cd $BCF_TOOLS_DIR
 ./configure prefix=$HOME
 make
 make install
