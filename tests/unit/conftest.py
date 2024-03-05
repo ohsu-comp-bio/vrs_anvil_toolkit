@@ -1,7 +1,9 @@
-import concurrent
+from concurrent.futures.thread import ThreadPoolExecutor
+from concurrent.futures import as_completed
 import queue
 import traceback
 from functools import lru_cache
+from threading import current_thread
 
 import pytest
 from biocommons.seqrepo import SeqRepo
@@ -11,6 +13,12 @@ from ga4gh.vrs.extras.translator import AlleleTranslator
 
 @pytest.fixture
 def seqrepo_dir():
+    """Return the seqrepo directory as fixture."""
+    return _seqrepo_dir()
+
+
+def _seqrepo_dir():
+    """Return the seqrepo directory."""
     with open(".env") as f:
         for line in f:
             # Ignore comments and empty lines
@@ -27,7 +35,26 @@ class CachingAlleleTranslator(AlleleTranslator):
     def translate_from(self, var, fmt=None, **kwargs):
         return super().translate_from(var, fmt=fmt, **kwargs)
 
-    def threaded_translate_from(self, generator, num_threads=2):
+
+def caching_allele_translator_factory():
+    """Return a CachingAlleleTranslator instance with local seqrepo"""
+    dp = SeqRepoDataProxy(SeqRepo(_seqrepo_dir()))
+    assert dp is not None
+    translator = CachingAlleleTranslator(dp)
+    return translator
+
+
+class ThreadedTranslator:
+    """A class to run the translation in a threaded fashion."""
+    thread_resources = {}
+
+    def thread_initializer(self):
+        """Initialize resources for use in threads."""
+        thread = current_thread()
+        translator = caching_allele_translator_factory()
+        self.thread_resources[thread.name] = {'translator': translator}
+
+    def threaded_translate_from(self, generator, num_threads=8):
         """
         Process a generator using multithreading and yield results as they occur.
 
@@ -43,27 +70,30 @@ class CachingAlleleTranslator(AlleleTranslator):
 
         def process_item(item):
             try:
-                result = self.translate_from(**item)
+                translator = self.thread_resources[current_thread().name]['translator']
+                result = translator.translate_from(**item)
                 # result = {'location': {}, 'state': {}, 'type': {}}  # TESTING dummy results:
             except Exception as e:
                 stack_trace = traceback.format_exc()
                 result = {'error': str(e), 'item': item, 'stack_trace': stack_trace}
             results_queue.put(result)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+        with ThreadPoolExecutor(max_workers=num_threads, initializer=self.thread_initializer) as executor:
             # Submit each item in the generator to the executor
             futures = {executor.submit(process_item, item): item for item in generator}
 
             # Yield results as they become available
-            for _ in concurrent.futures.as_completed(futures):
+            for _ in as_completed(futures):
                 yield results_queue.get()
 
 
 @pytest.fixture
-def my_translator(seqrepo_dir):
+def my_translator():
+    """Return a single translator instance."""
+    return caching_allele_translator_factory()
 
-    dp = SeqRepoDataProxy(SeqRepo(seqrepo_dir))
-    assert dp is not None
-    tlr = CachingAlleleTranslator(dp)
-    assert tlr is not None
-    return tlr
+
+@pytest.fixture
+def threaded_translator():
+    """Return a "thread manager", a pool of translator instances."""
+    return ThreadedTranslator()

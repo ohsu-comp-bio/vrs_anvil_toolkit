@@ -222,12 +222,12 @@ def num_threads():
     """Return the number of threads to use for testing."""
     # TODO - anything more than 2 produces errors, need to investigate
     # e.g.  {'error': 'bad parameter or other API misuse', 'item': {'fmt': 'gnomad', 'var': '13-20003010-A-AG'}}
-    return 2
+    return 20
 
 
-def test_threading(my_translator, num_threads):
+def test_threading(threaded_translator, num_threads):
     """Ensure we can feed the threaded_translate_from method a generator and get results back."""
-    tlr = my_translator
+    tlr = threaded_translator
     assert tlr is not None
     tlr.normalize = False
 
@@ -296,9 +296,9 @@ def gnomad_ids(path, limit=None) -> Generator[dict, None, None]:
                 break
 
 
-def test_gnomad(my_translator, gnomad_csv, num_threads):
+def test_gnomad(threaded_translator, gnomad_csv, num_threads):
     """We can process a set of gnomad variants."""
-    tlr = my_translator
+    tlr = threaded_translator
     assert tlr is not None
     tlr.normalize = False
     c = 0  # count of results
