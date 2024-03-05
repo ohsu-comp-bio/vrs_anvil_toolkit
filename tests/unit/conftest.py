@@ -4,11 +4,13 @@ import queue
 import traceback
 from functools import lru_cache
 from threading import current_thread
+from typing import Optional
 
 import pytest
 from biocommons.seqrepo import SeqRepo
 from ga4gh.vrs.dataproxy import SeqRepoDataProxy
 from ga4gh.vrs.extras.translator import AlleleTranslator
+from pydantic import BaseModel
 
 
 @pytest.fixture
@@ -36,23 +38,25 @@ class CachingAlleleTranslator(AlleleTranslator):
         return super().translate_from(var, fmt=fmt, **kwargs)
 
 
-def caching_allele_translator_factory():
+def caching_allele_translator_factory(normalize: bool = False, seqrepo_dir: str = _seqrepo_dir()):
     """Return a CachingAlleleTranslator instance with local seqrepo"""
-    dp = SeqRepoDataProxy(SeqRepo(_seqrepo_dir()))
-    assert dp is not None
+    dp = SeqRepoDataProxy(SeqRepo(seqrepo_dir))
+    assert dp is not None, "SeqRepoDataProxy is None"
     translator = CachingAlleleTranslator(dp)
+    translator.normalize = normalize
     return translator
 
 
-class ThreadedTranslator:
+class ThreadedTranslator(BaseModel):
     """A class to run the translation in a threaded fashion."""
-    thread_resources = {}
+    _thread_resources: dict = {}
+    normalize: Optional[bool] = False
 
-    def thread_initializer(self):
+    def _thread_initializer(self):
         """Initialize resources for use in threads."""
         thread = current_thread()
-        translator = caching_allele_translator_factory()
-        self.thread_resources[thread.name] = {'translator': translator}
+        translator = caching_allele_translator_factory(normalize=self.normalize)
+        self._thread_resources[thread.name] = {'translator': translator}
 
     def threaded_translate_from(self, generator, num_threads=8):
         """
@@ -70,7 +74,7 @@ class ThreadedTranslator:
 
         def process_item(item):
             try:
-                translator = self.thread_resources[current_thread().name]['translator']
+                translator = self._thread_resources[current_thread().name]['translator']
                 result = translator.translate_from(**item)
                 # result = {'location': {}, 'state': {}, 'type': {}}  # TESTING dummy results:
             except Exception as e:
@@ -78,7 +82,7 @@ class ThreadedTranslator:
                 result = {'error': str(e), 'item': item, 'stack_trace': stack_trace}
             results_queue.put(result)
 
-        with ThreadPoolExecutor(max_workers=num_threads, initializer=self.thread_initializer) as executor:
+        with ThreadPoolExecutor(max_workers=num_threads, initializer=self._thread_initializer) as executor:
             # Submit each item in the generator to the executor
             futures = {executor.submit(process_item, item): item for item in generator}
 
@@ -96,4 +100,4 @@ def my_translator():
 @pytest.fixture
 def threaded_translator():
     """Return a "thread manager", a pool of translator instances."""
-    return ThreadedTranslator()
+    return ThreadedTranslator(normalize=False)

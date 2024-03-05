@@ -300,7 +300,6 @@ def test_gnomad(threaded_translator, gnomad_csv, num_threads):
     """We can process a set of gnomad variants."""
     tlr = threaded_translator
     assert tlr is not None
-    tlr.normalize = False
     c = 0  # count of results
     start_time = time.time()
     errors = []
