@@ -13,8 +13,12 @@ from biocommons.seqrepo import SeqRepo
 from diskcache import Cache
 from ga4gh.vrs.dataproxy import SeqRepoDataProxy
 from ga4gh.vrs.extras.translator import AlleleTranslator
-# from glom import glom
+
 from pydantic import BaseModel
+import logging
+
+_logger = logging.getLogger(__name__)
+_logger.setLevel(logging.DEBUG)
 
 
 @pytest.fixture
@@ -107,21 +111,29 @@ def threaded_translator():
     return ThreadedTranslator(normalize=False)
 
 
-def generate_gnomad_id(vcf_line) -> list[str]:
-    """Assuming a standard VCF format with tab-separated fields, generate a gnomAD-like ID from a VCF line."""
-    # TODO - Change the way we generate the gnomad_id to match the way it is done in the vcf_annotation.py see https://github.com/ga4gh/vrs-python/blob/main/src/ga4gh/vrs/extras/vcf_annotation.py#L386-L411
+def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
+    """Assuming a standard VCF format with tab-separated fields, generate a gnomAD-like ID from a VCF line.
+    see https://github.com/ga4gh/vrs-python/blob/main/src/ga4gh/vrs/extras/vcf_annotation.py#L386-L411
+    """
     fields = vcf_line.strip().split('\t')
-
+    gnomad_ids = []
     # Extract relevant information (you may need to adjust these indices based on your VCF format)
     chromosome = fields[0]
     position = fields[1]
     reference_allele = fields[3]
     alternate_allele = fields[4]
 
-    # Create a gnomAD-like ID
-    gnomad_id = f"{chromosome}-{position}-{reference_allele}-{alternate_allele}"
+    gnomad_loc = f"{chromosome}-{position}"
+    if compute_for_ref:
+        gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{reference_allele}")
+    for alt in alternate_allele.split(","):
+        alt = alt.strip()
+        if '*' in alt:
+            _logger.debug("Star allele found: %s", alt)
+            continue
+        gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{alt}")
 
-    return gnomad_id
+    return gnomad_ids
 
 
 @pytest.fixture()
@@ -137,8 +149,9 @@ def params_from_vcf(path, limit=None) -> Generator[dict, None, None]:
         for line in f:
             if line.startswith("#"):
                 continue
-            gnomad_id = generate_gnomad_id(line)
-            yield {"fmt": "gnomad", "var": gnomad_id}
+            gnomad_ids = generate_gnomad_ids(line)
+            for gnomad_id in gnomad_ids:
+                yield {"fmt": "gnomad", "var": gnomad_id}
             c += 1
             if limit and c > limit:
                 break

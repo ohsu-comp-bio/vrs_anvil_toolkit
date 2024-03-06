@@ -1,30 +1,4 @@
-import logging
-
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.DEBUG)
-
-
-def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
-    # Assuming a standard VCF format with tab-separated fields
-    fields = vcf_line.strip().split('\t')
-    gnomad_ids = []
-    # Extract relevant information (you may need to adjust these indices based on your VCF format)
-    chromosome = fields[0]
-    position = fields[1]
-    reference_allele = fields[3]
-    alternate_allele = fields[4]
-
-    gnomad_loc = f"{chromosome}-{position}"
-    if compute_for_ref:
-        gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{reference_allele}")
-    for alt in alternate_allele.split(","):
-        alt = alt.strip()
-        if '*' in alt:
-            _logger.debug("Star allele found: %s", alt)
-            continue
-        gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{alt}")
-
-    return gnomad_ids
+from tests.unit.conftest import generate_gnomad_ids
 
 
 def test_generate_gnomad_ids(my_translator):
