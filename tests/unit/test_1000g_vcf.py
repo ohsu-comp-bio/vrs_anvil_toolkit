@@ -1,6 +1,6 @@
 import time
-from tests.unit.conftest import params_from_vcf
-
+#from tests.unit.conftest import params_from_vcf
+from conftest import params_from_vcf
 
 def test_1000g_vcf(threaded_translator, thousand_genome_vcf, num_threads):
     """Read and process AnVIL sourced vcf."""
