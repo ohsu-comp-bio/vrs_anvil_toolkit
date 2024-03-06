@@ -16,6 +16,8 @@ from ga4gh.vrs.extras.translator import AlleleTranslator
 
 from pydantic import BaseModel
 import logging
+import diskcache
+
 
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.DEBUG)
@@ -39,11 +41,18 @@ def _seqrepo_dir():
 
 
 class CachingAlleleTranslator(AlleleTranslator):
-    """A subclass of AlleleTranslator that uses lru_cache to cache results and adds a method to run in a threaded fashion."""
+    """A subclass of AlleleTranslator that uses cache results and adds a method to run in a threaded fashion."""
+    # TODO: make path configurable, ie env variable?
+    _cache: Cache = Cache(directory=pathlib.Path.home() / '.cache' / 'allele_translator')
 
-    @lru_cache(maxsize=None)  # TODO - this is a naive implementation, we should use a better cache, e.g. spill to disk, expire etc.
     def translate_from(self, var, fmt=None, **kwargs):
-        return super().translate_from(var, fmt=fmt, **kwargs)
+        """Check and update cache"""
+        key = f"{var}-{fmt}"
+        if key in self._cache:
+            return self._cache[key]
+        val = super().translate_from(var, fmt=fmt, **kwargs)
+        self._cache[key] = val
+        return val
 
 
 def caching_allele_translator_factory(normalize: bool = False, seqrepo_dir: str = _seqrepo_dir()):
