@@ -30,3 +30,8 @@ pytest .
 ## Notes on Usage
 
 Currently defaults to GRCh38 (add an annotate parameter to change it)
+
+
+### Contributing
+This project is open to contributions from the research community. If you are interested in contributing to the project, please contact the project team.
+See the [contributing guide](CONTRIBUTING.md) for more information on how to contribute to the project.
