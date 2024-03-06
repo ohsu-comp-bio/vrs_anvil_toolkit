@@ -26,6 +26,8 @@ def delete_output(request):
 
    request.addfinalizer(cleanup)
 
+
+@pytest.mark.skip(reason="Issue with test data see https://github.com/ohsu-comp-bio/vrs-python-testing/issues/16")
 def test_small_vcf_annotation(seqrepo_dir, delete_output, request):
    
    # create annotated vcf test file 
