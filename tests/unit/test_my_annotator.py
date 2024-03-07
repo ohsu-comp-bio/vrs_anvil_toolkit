@@ -4,6 +4,8 @@ from typing import Generator
 
 import pytest
 
+from tests.unit import validate_threaded_result
+
 # see https://github.com/ga4gh/vrs-python/blob/main/tests/extras/test_allele_translator.py#L17
 
 snv_inputs = {
@@ -257,19 +259,9 @@ def test_threading(threaded_translator, num_threads):
     c = 0  # count of results
     _times = 2
     errors = []
-    for result in tlr.threaded_translate_from(repeat_sequence(parameters, times=_times), num_threads=num_threads):
+    for result_dict in tlr.threaded_translate_from(repeat_sequence(parameters, times=_times), num_threads=num_threads):
         c += 1
-        assert result is not None
-        if isinstance(result, dict):
-            _ = result
-        else:
-            _ = result.model_dump(exclude_none=True)
-        assert _ is not None
-        if 'error' in _:
-            errors.append(_)
-            continue
-        for k in ['location', 'state', 'type']:
-            assert k in _
+        validate_threaded_result(result_dict, errors, validate_passthrough=False)
     assert c == (_times * len(parameters)), f"Expected {_times * len(parameters)} results, got {c}."
     assert len(errors) == 0, f"num_threads {num_threads} {c} items {len(errors)} errors {errors}."
 
@@ -282,7 +274,7 @@ def gnomad_csv() -> pathlib.Path:
     return _
 
 
-def gnomad_ids(path, limit=None) -> Generator[dict, None, None]:
+def gnomad_ids(path, limit=None) -> Generator[tuple, None, None]:
     """Open the csv file and yield the first column 'gnomAD ID', skip the header"""
     c = 0
     with open(path, "r") as f:
@@ -292,7 +284,7 @@ def gnomad_ids(path, limit=None) -> Generator[dict, None, None]:
                 skip = False
                 continue
             gnomad_id = line.split(",")[0]
-            yield {"fmt": "gnomad", "var": gnomad_id}
+            yield {"fmt": "gnomad", "var": gnomad_id}, path, c
             c += 1
             if limit and c > limit:
                 break
@@ -305,19 +297,9 @@ def test_gnomad(threaded_translator, gnomad_csv, num_threads):
     c = 0  # count of results
     start_time = time.time()
     errors = []
-    for result in tlr.threaded_translate_from(generator=gnomad_ids(gnomad_csv), num_threads=num_threads):
+    for result_dict in tlr.threaded_translate_from(generator=gnomad_ids(gnomad_csv), num_threads=num_threads):
         c += 1
-        assert result is not None
-        if isinstance(result, dict):
-            _ = result  # handle dummy results
-        else:
-            _ = result.model_dump(exclude_none=True)
-        assert _ is not None
-        if 'error' in _:
-            errors.append(_)
-            continue
-        for k in ['location', 'state', 'type']:
-            assert k in _
+        validate_threaded_result(result_dict, errors, validate_passthrough=False)
     end_time = time.time()
 
     elapsed_time = end_time - start_time

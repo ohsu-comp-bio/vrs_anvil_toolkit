@@ -7,8 +7,6 @@ import yaml
 import vrs_anvil
 from vrs_anvil import caching_allele_translator_factory, ThreadedTranslator, Manifest
 
-from vrs_anvil import seqrepo_dir as _seqrepo_dir
-
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.DEBUG)
 

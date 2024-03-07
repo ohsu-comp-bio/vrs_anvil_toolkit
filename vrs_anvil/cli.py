@@ -4,16 +4,18 @@ import yaml
 import logging
 
 from vrs_anvil import Manifest
+from vrs_anvil.annotator import annotate_all
 
 _logger = logging.getLogger(__name__)
 
 
 @click.group(invoke_without_command=True)
 @click.version_option(package_name='vrs_anvil')
-@click.option('--manifest_path', type=click.Path(exists=True), default='manifest.yaml', help='Path to manifest file.')
+@click.option('--manifest', type=click.Path(exists=True), default='manifest.yaml', help='Path to manifest file.')
 @click.option('--verbose', default=False, help='Log more information', is_flag=True)
+@click.option('--max_errors', default=10, help='Number of acceptable errors.')
 @click.pass_context
-def cli(ctx, verbose: bool, manifest_path: str):
+def cli(ctx, verbose: bool, manifest: str, max_errors: int):
     """GA4GH GKS utility for AnVIL."""
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
@@ -23,7 +25,7 @@ def cli(ctx, verbose: bool, manifest_path: str):
         _logger.setLevel(logging.INFO)
 
     try:
-        with open(manifest_path, 'r') as stream:
+        with open(manifest, 'r') as stream:
             manifest = Manifest.parse_obj(yaml.safe_load(stream))
     except Exception as exc:
         click.secho(f"Error in initializing: {exc}", fg='red')
@@ -37,20 +39,20 @@ def cli(ctx, verbose: bool, manifest_path: str):
     ctx.ensure_object(dict)
     ctx.obj['manifest'] = manifest
     ctx.obj['verbose'] = verbose
+    ctx.obj['max_errors'] = max_errors
 
 
 @cli.command('annotate')
-@click.argument('metrics_path', default='metrics.tsv')
 @click.pass_context
-def annotate_cli(ctx, metrics_path: str):
-    """Read manifest file, annotate variants
+def annotate_cli(ctx):
+    """Read manifest file, annotate variants, all parameters controlled by manifest.yaml."""
 
-    \b
-    metrics_path: path to output file.
-    """
     try:
+        manifest = ctx.obj['manifest']
         _logger.debug(f"Manifest: {ctx.obj['manifest']}")
-        click.secho(f"TODO - 🚧 annotate variants, write results to {metrics_path}", fg='yellow')
+        click.secho(f"🚧 annotate variants, write results to {manifest.state_directory}", fg='yellow')
+        annotate_all(manifest, max_errors=ctx.obj['max_errors'])
+        click.secho(f"🥳 metrics available in {manifest.state_directory}", fg='green')
     except Exception as exc:
         click.secho(f"Error in processing: {exc}", fg='red')
         _logger.exception(exc)

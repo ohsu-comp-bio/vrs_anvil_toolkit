@@ -5,3 +5,8 @@ biocommons.seqrepo
 glom
 click
 pyyaml
+google
+requests
+boto3
+tqdm
+google-cloud-storage
