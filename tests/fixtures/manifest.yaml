@@ -1,0 +1,20 @@
+# Path to the cache directory, defaults to cache/ (relative to the root of the repository)
+cache_directory: "tmp/cache/"
+
+# Number of works to use for processing, defaults to 20
+worker_count: 20
+
+# Should we create new VCFs with annotations. FOR FUTURE USE
+# annotate_vcfs: false
+
+# where to store the state of the application, log files, etc.
+state_directory: "tmp/state/"
+
+# where to store temporary files, etc.
+work_directory: "tmp/work/"
+
+# The local file paths or URLs to vcf files to be processed
+vcf_files: []
+
+seqrepo_directory: "~/seqrepo/latest"
+

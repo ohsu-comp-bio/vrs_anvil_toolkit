@@ -41,3 +41,11 @@ def thousand_genome_vcf() -> pathlib.Path:
     _ = pathlib.Path("tests/fixtures/1kGP.chr1.1000.vcf")
     assert _.exists()
     return _
+
+
+@pytest.fixture
+def manifest_path() -> pathlib.Path:
+    """Return a path to a manifest file."""
+    _ = pathlib.Path("tests/fixtures/manifest.yaml")
+    assert _.exists()
+    return _

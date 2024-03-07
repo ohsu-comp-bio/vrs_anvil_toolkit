@@ -12,10 +12,9 @@ from diskcache import Cache
 from ga4gh.vrs.dataproxy import SeqRepoDataProxy
 from ga4gh.vrs.extras.translator import AlleleTranslator
 from glom import glom
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 _logger = logging.getLogger(__name__)
-_logger.setLevel(logging.DEBUG)
 
 
 def seqrepo_dir():
@@ -180,3 +179,42 @@ def meta_kb_ids(metakb_path) -> Generator[str, None, None]:
             with open(file_name, 'r') as file:
                 data = json.loads(file.read())
                 yield from ([_ for _ in find_items_with_key(data, 'id') if _.startswith('ga4gh:VA')])
+
+
+class Manifest(BaseModel):
+    """A class to represent the manifest file."""
+    cache_directory: str = "cache/"
+    """Path to the cache directory, defaults to cache/ (relative to the root of the repository)"""
+
+    worker_count: int = 20
+    """Number of works to use for processing, defaults to 20"""
+
+    annotate_vcfs: bool = False
+    """Should we create new VCFs with annotations. FOR FUTURE USE"""
+
+    state_directory: str = "state/"
+    """where to store the state of the application, log files, etc."""
+
+    vcf_files: list[str]
+    """The local file paths or URLs to vcf files to be processed"""
+
+    work_directory: str = "work/"
+    """The directory to store intermediate files"""
+
+    seqrepo_directory: str = "~/seqrepo/latest"
+    """The directory where seqrepo is located"""
+
+    @model_validator(mode='after')
+    def check_paths(self) -> 'Manifest':
+        """Post init method to set the cache directory."""
+        self.seqrepo_directory = str(pathlib.Path(self.seqrepo_directory).expanduser())
+        self.work_directory = str(pathlib.Path(self.work_directory).expanduser())
+        self.cache_directory = str(pathlib.Path(self.cache_directory).expanduser())
+        self.state_directory = str(pathlib.Path(self.state_directory).expanduser())
+        if not pathlib.Path(self.seqrepo_directory).exists():
+            raise ValueError(f"seqrepo_directory {self.seqrepo_directory} does not exist")
+        for _ in ['work_directory', 'cache_directory', 'state_directory']:
+            if not pathlib.Path(getattr(self, _)).exists():
+                pathlib.Path(getattr(self, _)).mkdir(parents=True, exist_ok=True)
+                _logger.debug(f"Created directory {getattr(self, _)}")
+        return self
