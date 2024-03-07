@@ -16,6 +16,8 @@ from pydantic import BaseModel, model_validator
 
 _logger = logging.getLogger(__name__)
 
+manifest: 'Manifest' = None
+
 
 def seqrepo_dir():
     """Return the seqrepo directory."""
@@ -30,14 +32,17 @@ def seqrepo_dir():
 
 def cache_directory(cache_name: str) -> str:
     """Return the cache directory."""
-    # TODO - is the home directory the best place for this?
-    # TODO: make path configurable, ie env variable?
-    return str(pathlib.Path.home() / '.vrs-anvil-cache' / cache_name)
+    return str(pathlib.Path(manifest.cache_directory) / cache_name)
 
 
 class CachingAlleleTranslator(AlleleTranslator):
     """A subclass of AlleleTranslator that uses cache results and adds a method to run in a threaded fashion."""
-    _cache: Cache = Cache(directory=cache_directory('allele_translator'))
+    _cache: Cache = None
+
+    def __init__(self, data_proxy: SeqRepoDataProxy, normalize: bool = False):
+        super().__init__(data_proxy)
+        self.normalize = normalize
+        self._cache = Cache(directory=cache_directory('allele_translator'))
 
     def translate_from(self, var, fmt=None, **kwargs):
         """Check and update cache"""
@@ -186,7 +191,7 @@ class Manifest(BaseModel):
     cache_directory: str = "cache/"
     """Path to the cache directory, defaults to cache/ (relative to the root of the repository)"""
 
-    worker_count: int = 20
+    num_threads: int = 20
     """Number of works to use for processing, defaults to 20"""
 
     annotate_vcfs: bool = False

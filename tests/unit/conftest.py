@@ -2,13 +2,23 @@ import logging
 import pathlib
 
 import pytest
+import yaml
 
-from vrs_anvil import caching_allele_translator_factory, ThreadedTranslator
+import vrs_anvil
+from vrs_anvil import caching_allele_translator_factory, ThreadedTranslator, Manifest
 
 from vrs_anvil import seqrepo_dir as _seqrepo_dir
 
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.DEBUG)
+
+
+@pytest.fixture
+def testing_manifest():
+    """Return a testing manifest."""
+    with open(pathlib.Path("tests/fixtures/manifest.yaml"), 'r') as stream:
+        manifest = Manifest.parse_obj(yaml.safe_load(stream))
+        vrs_anvil.manifest = manifest
 
 
 @pytest.fixture
@@ -18,13 +28,13 @@ def seqrepo_dir():
 
 
 @pytest.fixture
-def my_translator():
+def my_translator(testing_manifest):
     """Return a single translator instance."""
     return caching_allele_translator_factory()
 
 
 @pytest.fixture
-def threaded_translator():
+def threaded_translator(testing_manifest):
     """Return a "thread manager", a pool of translator instances."""
     return ThreadedTranslator(normalize=False)
 
@@ -32,7 +42,7 @@ def threaded_translator():
 @pytest.fixture()
 def num_threads():
     """Return the number of threads to use for testing."""
-    return 20
+    return vrs_anvil.manifest.num_threads
 
 
 @pytest.fixture
