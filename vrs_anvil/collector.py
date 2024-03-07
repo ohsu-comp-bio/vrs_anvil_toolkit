@@ -7,6 +7,7 @@ from google.cloud import storage
 import boto3
 
 
+# TODO - not tested
 def download_s3_object(bucket_name, object_name, destination_file_name) -> str:
     """Download an object from an S3 bucket and save it to a file."""
     if os.path.exists(destination_file_name):
@@ -16,6 +17,7 @@ def download_s3_object(bucket_name, object_name, destination_file_name) -> str:
     return destination_file_name
 
 
+# TODO - not tested
 def download_google_blob(bucket_name, source_blob_name, destination_file_name) -> str:
     """Downloads a blob from the bucket."""
     if os.path.exists(destination_file_name):
@@ -28,6 +30,7 @@ def download_google_blob(bucket_name, source_blob_name, destination_file_name) -
     return destination_file_name
 
 
+# TODO - not tested
 def download_http_file(url, destination_dir) -> str:
     """Download a file from a URL and save it to a directory."""
     filename = os.path.join(destination_dir, url.split("/")[-1])
@@ -62,6 +65,7 @@ def create_symlink_to_work_directory(work_directory: str, vcf_file: str) -> str:
 
 def collect_manifest_urls(manifest: Manifest) -> Generator[str, None, None]:
     """Collect the URLs from the manifest and download them."""
+    # TODO - is this really too many threads? each download is IO bound
     with ThreadPoolExecutor(max_workers=manifest.num_threads) as executor:
         futures = []
         for vcf_file in manifest.vcf_files:

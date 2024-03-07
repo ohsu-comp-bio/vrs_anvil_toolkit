@@ -34,6 +34,7 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
 
     if not ctx.invoked_subcommand:
         click.secho(manifest, fg='green')
+        # TODO - what purpose does this serve?
         click.secho('No subcommand invoked', fg='yellow')
 
     ctx.ensure_object(dict)

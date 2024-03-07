@@ -49,6 +49,7 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
             metrics[key]["end_time"] = time.time()
             metrics[key]["line_count"] = line_number
             metrics[key]["elapsed_time"] = metrics[key]["end_time"] - metrics[key]["start_time"]
+            # TODO - should we delete the file (if its not a symlink) after we are done with it?
 
 
 def _vrs_generator(manifest: Manifest) -> Generator[dict, None, None]:
@@ -61,8 +62,10 @@ def _vrs_generator(manifest: Manifest) -> Generator[dict, None, None]:
 
 def annotate_all(manifest: Manifest, max_errors: int):
     """Annotate all the files in the manifest."""
-    # set the manifest in a well known place
+
+    # set the manifest in a well known place, TODO: is this really necessary
     vrs_anvil.manifest = manifest
+
     metrics["total"]["start_time"] = time.time()
     total_errors = 0
     for result_dict in _vrs_generator(manifest):
@@ -82,11 +85,9 @@ def annotate_all(manifest: Manifest, max_errors: int):
             if total_errors > max_errors:
                 break
         else:
-
-            metrics[key]["successes"] += 1
-
             result = result_dict.get('result', None)
             assert isinstance(result, Allele), f"result is not the expected Pydantic Model {type(result)} {result_dict.keys()}"
+            metrics[key]["successes"] += 1
 
     metrics["total"]["end_time"] = time.time()
     metrics["total"]["elapsed_time"] = metrics["total"]["end_time"] - metrics["total"]["start_time"]
@@ -95,6 +96,7 @@ def annotate_all(manifest: Manifest, max_errors: int):
 
     metrics_file = pathlib.Path(manifest.state_directory) / "metrics.yaml"
     with open(metrics_file, "w") as f:
+        # clean up the recursive dict into a plain old dict so that it serialized to yaml neatly
         for k, v in metrics.items():
             metrics[k] = dict(v)
             if 'errors' in metrics[k] and k != 'total':

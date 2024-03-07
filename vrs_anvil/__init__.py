@@ -144,6 +144,7 @@ def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
         gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{reference_allele}")
     for alt in alternate_allele.split(","):
         alt = alt.strip()
+        # TODO - do we also need to guard against INS, DEL and other stuff
         if '*' in alt:
             _logger.debug("Star allele found: %s", alt)
             continue
