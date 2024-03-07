@@ -13,7 +13,7 @@ def calculate_gnomad_expressions(input_vcf, alt=True):
     # Iterate over the output of bcftools and yield each gnomAD expression
     for line in process.stdout:
         yield line.strip()
-    
+
 input_vcf = "vcf/NA12878.chr1.100.000.vcf"
 # input_vcf = "vcf/1kGP.chr1.1000.vcf"
 stem = input_vcf.replace('.vcf', '')

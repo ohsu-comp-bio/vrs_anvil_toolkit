@@ -18,7 +18,7 @@ if __name__ == "__main__":
     # input path
     input_vcf_file_name = "1kGP.chr1.10.000.vcf"
     input_dir = "vcf"
-    
+
     # output paths
     output_dir = "split"
     os.makedirs(output_dir, exist_ok=True)
@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
     ## store VCF as VRS Alleles
     input_vcf = f"{input_dir}/{input_vcf_file_name}"
-        
+
     print("trying...", input_vcf)
     t = time()
     output_vcf, output_pkl = annotate_vcf(input_vcf, output_vcf, output_pkl, \
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     # convert alleles to vrs ids
     vrs_ids = [ga4gh_identify(models.Allele(**allele_dict)) \
             for _, allele_dict in allele_dicts.items()]
-            
+
     # ping metakb
     ## ATTEMPT 2: ASYNC ##
     import asyncio
@@ -84,9 +84,9 @@ if __name__ == "__main__":
             tasks = [fetch_data(session, url) for url in urls]
             results = await asyncio.gather(*tasks)
             return results
-    
+
     t = time()
-    hits = asyncio.run(asyncify(vrs_ids)) 
+    hits = asyncio.run(asyncify(vrs_ids))
     print(f"metakb (async): {(time()-t):.2f} s")
 
     ## ATTEMPT 1: PARALLEL ##
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     # save and report hits
     with open(metakb_output_pkl, 'wb') as file:
         pickle.dump(hits, file)
-    
+
     print("\nhits to ids queried...")
     total = num_ids_limit if num_ids_limit else len(vrs_ids)
     print_percent(len(hits), total)

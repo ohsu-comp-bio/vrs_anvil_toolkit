@@ -17,4 +17,3 @@ work_directory: "tmp/work/"
 vcf_files: []
 
 seqrepo_directory: "~/seqrepo/latest"
-
