@@ -19,7 +19,7 @@ BCFTOOLS_TAR=$(ls -1t bcftools*.tar.bz2 | head -n 1)
 tar -xvf $BCFTOOLS_TAR
 rm $BCFTOOLS_TAR
 
-mv ~/bcftools*/ $BCFTOOLS_DIR 
+mv ~/bcftools*/ $BCFTOOLS_DIR
 cd $BCFTOOLS_DIR
 ./configure prefix=$HOME
 make

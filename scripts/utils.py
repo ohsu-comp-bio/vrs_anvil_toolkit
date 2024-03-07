@@ -35,7 +35,7 @@ def seqrepo_dir():
 def annotate_vcf(path, require_validation=False):
     '''param stem: path of input vcf file'''
     stem = path.replace(".vcf", "")
-    
+
     input_vcf = path
     # output_vcf = f"{stem}.output.vcf.gz"
     output_vcf = ""
@@ -45,7 +45,7 @@ def annotate_vcf(path, require_validation=False):
     vcf_annotator.tlr.rle_seq_limit = None
     vcf_annotator.annotate(vcf_in=input_vcf, vcf_out=output_vcf, \
         vrs_pickle_out=output_pkl, require_validation=require_validation)
-    
+
     return output_vcf, output_pkl
 
 def print_dict(d, indent=2):
@@ -62,7 +62,7 @@ def annotate_vcf(input_vcf, output_vcf, output_pkl, seqrepo_root_dir, require_va
     vcf_annotator.tlr.rle_seq_limit = rle_seq_limit
     vcf_annotator.annotate(vcf_in=input_vcf, vcf_out=output_vcf, \
         vrs_pickle_out=output_pkl, require_validation=require_validation)
-    
+
     return output_vcf, output_pkl
 
 def download_s3(url: str, outfile_path: Path) -> None:
@@ -87,7 +87,7 @@ def unpickle(file_name):
 
 def metakb(id, recent=True, log=False):
     """Query metakb using vrs object"""
-        
+
     if recent:
         if log:
             print("recent elasticbeanstalk api (VRS 2.0 models)")
@@ -98,16 +98,16 @@ def metakb(id, recent=True, log=False):
             print("old api (VRS 1.3 models)")
         response = requests.get("https://dev-search.cancervariants.org" \
                                 f"/api/v2/search?variation={id}&detail=false")
-    
+
     if response.status_code >= 400:
         print(f"API error: {response.text} ({response.status_code})")
         return
-    
+
     response_json = response.json()
-    
+
     if response_json['warnings'] == []:
         return (id, response_json)
-    
+
     if log:
         print(response_json['warnings'])
     return
@@ -144,7 +144,7 @@ def parallelize(vrs_decorator, vrs_objects, worker_count, progress_interval=500,
                 break
             elif c % progress_interval == 0:
                 print(datetime.now().isoformat(), c)
-    
+
     return list(results)
 
 def truncate(s, first_few, last_few):
