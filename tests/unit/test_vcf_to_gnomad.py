@@ -1,4 +1,4 @@
-from tests.unit.conftest import generate_gnomad_ids
+from vrs_anvil import generate_gnomad_ids
 
 
 def test_generate_gnomad_ids(my_translator):

@@ -1,23 +1,11 @@
 import json
+import logging
 import pathlib
-from concurrent.futures.thread import ThreadPoolExecutor
-from concurrent.futures import as_completed
-import queue
-import traceback
-from functools import lru_cache
-from threading import current_thread
-from typing import Optional, Generator
+from typing import Generator
 
 import pytest
-from biocommons.seqrepo import SeqRepo
-from diskcache import Cache
-from ga4gh.vrs.dataproxy import SeqRepoDataProxy
-from ga4gh.vrs.extras.translator import AlleleTranslator
 
-from pydantic import BaseModel
-import logging
-import diskcache
-
+from vrs_anvil import seqrepo_dir, caching_allele_translator_factory, ThreadedTranslator, find_items_with_key
 
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.DEBUG)
@@ -26,86 +14,7 @@ _logger.setLevel(logging.DEBUG)
 @pytest.fixture
 def seqrepo_dir():
     """Return the seqrepo directory as fixture."""
-    return _seqrepo_dir()
-
-
-def _seqrepo_dir():
-    """Return the seqrepo directory."""
-    with open(".env") as f:
-        for line in f:
-            # Ignore comments and empty lines
-            if line.strip() and not line.strip().startswith('#'):
-                key, value = line.strip().split('=', 1)
-                if key == "SEQREPO_ROOT":
-                    return value + "/latest"
-
-
-class CachingAlleleTranslator(AlleleTranslator):
-    """A subclass of AlleleTranslator that uses cache results and adds a method to run in a threaded fashion."""
-    # TODO: make path configurable, ie env variable?
-    _cache: Cache = Cache(directory=pathlib.Path.home() / '.cache' / 'allele_translator')
-
-    def translate_from(self, var, fmt=None, **kwargs):
-        """Check and update cache"""
-        key = f"{var}-{fmt}"
-        if key in self._cache:
-            return self._cache[key]
-        val = super().translate_from(var, fmt=fmt, **kwargs)
-        self._cache[key] = val
-        return val
-
-
-def caching_allele_translator_factory(normalize: bool = False, seqrepo_dir: str = _seqrepo_dir()):
-    """Return a CachingAlleleTranslator instance with local seqrepo"""
-    dp = SeqRepoDataProxy(SeqRepo(seqrepo_dir))
-    assert dp is not None, "SeqRepoDataProxy is None"
-    translator = CachingAlleleTranslator(dp)
-    translator.normalize = normalize
-    return translator
-
-
-class ThreadedTranslator(BaseModel):
-    """A class to run the translation in a threaded fashion."""
-    _thread_resources: dict = {}
-    normalize: Optional[bool] = False
-
-    def _thread_initializer(self):
-        """Initialize resources for use in threads."""
-        thread = current_thread()
-        translator = caching_allele_translator_factory(normalize=self.normalize)
-        self._thread_resources[thread.name] = {'translator': translator}
-
-    def threaded_translate_from(self, generator, num_threads=8):
-        """
-        Process a generator using multithreading and yield results as they occur.
-
-        Args:
-        - generator: The generator to be processed.
-        - func: The function to be applied to each element of the generator.
-        - num_threads: Number of threads to use for processing.
-
-        Yields:
-        - Results from applying the function to each element of the generator.
-        """
-        results_queue = queue.Queue()
-
-        def process_item(item):
-            try:
-                translator = self._thread_resources[current_thread().name]['translator']
-                result = translator.translate_from(**item)
-                # result = {'location': {}, 'state': {}, 'type': {}}  # TESTING dummy results:
-            except Exception as e:
-                stack_trace = traceback.format_exc()
-                result = {'error': str(e), 'item': item, 'stack_trace': stack_trace}
-            results_queue.put(result)
-
-        with ThreadPoolExecutor(max_workers=num_threads, initializer=self._thread_initializer) as executor:
-            # Submit each item in the generator to the executor
-            futures = {executor.submit(process_item, item): item for item in generator}
-
-            # Yield results as they become available
-            for _ in as_completed(futures):
-                yield results_queue.get()
+    return seqrepo_dir()
 
 
 @pytest.fixture
@@ -120,50 +29,10 @@ def threaded_translator():
     return ThreadedTranslator(normalize=False)
 
 
-def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
-    """Assuming a standard VCF format with tab-separated fields, generate a gnomAD-like ID from a VCF line.
-    see https://github.com/ga4gh/vrs-python/blob/main/src/ga4gh/vrs/extras/vcf_annotation.py#L386-L411
-    """
-    fields = vcf_line.strip().split('\t')
-    gnomad_ids = []
-    # Extract relevant information (you may need to adjust these indices based on your VCF format)
-    chromosome = fields[0]
-    position = fields[1]
-    reference_allele = fields[3]
-    alternate_allele = fields[4]
-
-    gnomad_loc = f"{chromosome}-{position}"
-    if compute_for_ref:
-        gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{reference_allele}")
-    for alt in alternate_allele.split(","):
-        alt = alt.strip()
-        if '*' in alt:
-            _logger.debug("Star allele found: %s", alt)
-            continue
-        gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{alt}")
-
-    return gnomad_ids
-
-
 @pytest.fixture()
 def num_threads():
     """Return the number of threads to use for testing."""
     return 20
-
-
-def params_from_vcf(path, limit=None) -> Generator[dict, None, None]:
-    """Open the vcf file, skip headers, yield the first lines as gnomad-like IDs"""
-    c = 0
-    with open(path, "r") as f:
-        for line in f:
-            if line.startswith("#"):
-                continue
-            gnomad_ids = generate_gnomad_ids(line)
-            for gnomad_id in gnomad_ids:
-                yield {"fmt": "gnomad", "var": gnomad_id}
-            c += 1
-            if limit and c > limit:
-                break
 
 
 @pytest.fixture
@@ -172,43 +41,3 @@ def thousand_genome_vcf() -> pathlib.Path:
     _ = pathlib.Path("tests/fixtures/1kGP.chr1.1000.vcf")
     assert _.exists()
     return _
-
-
-def find_items_with_key(dictionary, key_to_find):
-    """Find all items in a dictionary that have a specific key."""
-    result = glom(dictionary, f"**.{key_to_find}")
-    return result
-
-
-def meta_kb_ids(metakb_path) -> Generator[str, None, None]:
-    """Find all the applicable vrs ids in the metakb files."""
-    for file_name in pathlib.Path(metakb_path).glob("*.json"):
-        if file_name.is_file():
-            with open(file_name, 'r') as file:
-                data = json.loads(file.read())
-                yield from ([_ for _ in find_items_with_key(data, 'id') if _.startswith('ga4gh:VA')])
-
-
-class MetaKBProxy(BaseModel):
-    """A proxy for the MetaKB, maintains a cache of VRS ids."""
-    metakb_path: pathlib.Path
-    _cache: Optional[Cache] = None
-
-    def __init__(self, metakb_path: pathlib.Path, cache: Cache = None):
-        super().__init__(metakb_path=metakb_path, _cache=cache)
-        if cache is None:
-            reload_cache = False
-            if not (metakb_path / 'cache').is_dir():
-                reload_cache = True
-            cache = Cache(directory=metakb_path / 'cache')
-            cache.stats(enable=True)
-            if reload_cache:
-                for _ in meta_kb_ids(metakb_path):
-                    cache.set(_, True)
-            print(cache.stats())
-        self._cache = cache
-
-    def get(self, vrs_id: str) -> bool:
-        """Get the vrs_id from the cache."""
-        return self._cache.get(vrs_id, False)
-

@@ -1,5 +1,6 @@
-seqrepo
 ga4gh.vrs[extras]==2.0.0a3
-ga4gh.vrs
 pyVCF3
 diskcache
+biocommons.seqrepo
+glom
+click
