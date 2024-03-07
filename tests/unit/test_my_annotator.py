@@ -277,7 +277,7 @@ def test_threading(threaded_translator, num_threads):
 @pytest.fixture
 def gnomad_csv() -> pathlib.Path:
     """Return a path to a gnomad csv file."""
-    _ = pathlib.Path("tests/data/gnomAD_v4.0.0_ENSG00000012048_2024_03_04_18_33_26.csv")
+    _ = pathlib.Path("tests/fixtures/gnomAD_v4.0.0_ENSG00000012048_2024_03_04_18_33_26.csv")
     assert _.exists()
     return _
 

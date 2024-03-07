@@ -6,7 +6,7 @@ from ga4gh.vrs.extras.vcf_annotation import VCFAnnotator
 
 VRS_ERROR_FIELD = VCFAnnotator.VRS_ERROR_FIELD
 VRS_ALLELE_IDS_FIELD = VCFAnnotator.VRS_ALLELE_IDS_FIELD
-TEST_DATA_DIR = "tests/data"
+TEST_DATA_DIR = "tests/fixtures"
 
 @pytest.fixture
 def seqrepo_dir():
@@ -27,7 +27,7 @@ def delete_output(request):
    request.addfinalizer(cleanup)
 
 
-@pytest.mark.skip(reason="Issue with test data see https://github.com/ohsu-comp-bio/vrs-python-testing/issues/16")
+@pytest.mark.skip(reason="Issue with test fixtures see https://github.com/ohsu-comp-bio/vrs-python-testing/issues/16")
 def test_small_vcf_annotation(seqrepo_dir, delete_output, request):
    
    # create annotated vcf test file 

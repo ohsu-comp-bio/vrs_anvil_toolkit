@@ -169,7 +169,7 @@ def params_from_vcf(path, limit=None) -> Generator[dict, None, None]:
 @pytest.fixture
 def thousand_genome_vcf() -> pathlib.Path:
     """Return a path to a 1000g vcf."""
-    _ = pathlib.Path("tests/data/1kGP.chr1.1000.vcf")
+    _ = pathlib.Path("tests/fixtures/1kGP.chr1.1000.vcf")
     assert _.exists()
     return _
 
