@@ -54,8 +54,10 @@ class CachingAlleleTranslator(AlleleTranslator):
         return val
 
 
-def caching_allele_translator_factory(normalize: bool = False, seqrepo_directory: str = seqrepo_dir()):
+def caching_allele_translator_factory(normalize: bool = False, seqrepo_directory: str = None):
     """Return a CachingAlleleTranslator instance with local seqrepo"""
+    if not seqrepo_directory:
+        seqrepo_directory = manifest.seqrepo_directory
     dp = SeqRepoDataProxy(SeqRepo(seqrepo_directory))
     assert dp is not None, "SeqRepoDataProxy is None"
     translator = CachingAlleleTranslator(dp)
@@ -89,18 +91,36 @@ class ThreadedTranslator(BaseModel):
         results_queue = queue.Queue()
 
         def process_item(item):
+            """Process an item from the generator.
+            An item is a tuple:
+            - 0: the dictionary with the fmt and var keys
+            - 1: the file path of the vcf (or other source) optional
+            - 2: the line number in the vcf optional
+            """
+
             try:
+                result_dict = {'parameters': item[0], 'file': None, 'line': None}
+                if len(item) > 1:
+                    result_dict['file'] = item[1]
+                if len(item) > 2:
+                    result_dict['line'] = item[2]
                 translator = self._thread_resources[current_thread().name]['translator']
-                result = translator.translate_from(**item)
+                result = translator.translate_from(**item[0])
                 # result = {'location': {}, 'state': {}, 'type': {}}  # TESTING dummy results:
+                result_dict['result'] = result
             except Exception as e:
-                stack_trace = traceback.format_exc()
-                result = {'error': str(e), 'item': item, 'stack_trace': stack_trace}
-            results_queue.put(result)
+                result_dict['error'] = str(e)
+                result_dict['stack_trace'] = traceback.format_exc()
+            results_queue.put(result_dict)
+
+        def _ensure_tuple(item):
+            if isinstance(item, dict):
+                return item, None, None
+            return item
 
         with ThreadPoolExecutor(max_workers=num_threads, initializer=self._thread_initializer) as executor:
             # Submit each item in the generator to the executor
-            futures = {executor.submit(process_item, item): item for item in generator}
+            futures = {executor.submit(process_item, _ensure_tuple(item)): item for item in generator}
 
             # Yield results as they become available
             for _ in as_completed(futures):
@@ -124,6 +144,7 @@ def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
         gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{reference_allele}")
     for alt in alternate_allele.split(","):
         alt = alt.strip()
+        # TODO - do we also need to guard against INS, DEL and other stuff
         if '*' in alt:
             _logger.debug("Star allele found: %s", alt)
             continue
@@ -141,7 +162,7 @@ def params_from_vcf(path, limit=None) -> Generator[dict, None, None]:
                 continue
             gnomad_ids = generate_gnomad_ids(line)
             for gnomad_id in gnomad_ids:
-                yield {"fmt": "gnomad", "var": gnomad_id}
+                yield {"fmt": "gnomad", "var": gnomad_id}, path, c
             c += 1
             if limit and c > limit:
                 break
@@ -208,6 +229,9 @@ class Manifest(BaseModel):
 
     seqrepo_directory: str = "~/seqrepo/latest"
     """The directory where seqrepo is located"""
+
+    normalize: bool = False
+    """Normalize the VRS ids"""
 
     @model_validator(mode='after')
     def check_paths(self) -> 'Manifest':

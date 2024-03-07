@@ -164,3 +164,6 @@ cython_debug/
 
 # pycharm
 .idea/
+
+# workspace
+tmp/
