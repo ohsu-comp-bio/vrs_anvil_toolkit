@@ -162,7 +162,9 @@ def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
     for alt in alternate_allele.split(","):
         alt = alt.strip()
         # TODO - Should we be raising a ValueError hear and let the caller do the logging?
-        invalid_alts = ['<INS>', '<DEL>', '<DUP>', '<INV>', '<CNV>', '<DUP:TANDEM>', '<DUP:INT>', '<DUP:EXT>', '*']
+        # TODO - Should this be a config in the manifest?
+        # ['<INS>', '<DEL>', '<DUP>', '<INV>', '<CNV>', '<DUP:TANDEM>', '<DUP:INT>', '<DUP:EXT>', '*']
+        invalid_alts = ['INS', 'DEL', 'DUP', 'INV', 'CNV', 'TANDEM', 'INT', 'EXT', '*']
         is_valid = True
         for invalid_alt in invalid_alts:
             if invalid_alt in alt:
