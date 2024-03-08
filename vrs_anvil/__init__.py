@@ -18,6 +18,11 @@ _logger = logging.getLogger(__name__)
 
 manifest: 'Manifest' = None
 
+# TODO - read from manifest
+gigabytes = 20
+bytes_in_a_gigabyte = 1024 ** 3  # 1 gigabyte = 1024^3 bytes
+cache_size_limit = gigabytes * bytes_in_a_gigabyte
+
 
 def seqrepo_dir():
     """Return the seqrepo directory."""
@@ -42,7 +47,7 @@ class CachingAlleleTranslator(AlleleTranslator):
     def __init__(self, data_proxy: SeqRepoDataProxy, normalize: bool = False):
         super().__init__(data_proxy)
         self.normalize = normalize
-        self._cache = Cache(directory=cache_directory('allele_translator'))
+        self._cache = Cache(directory=cache_directory('allele_translator'), size_limit=cache_size_limit)
 
     def translate_from(self, var, fmt=None, **kwargs):
         """Check and update cache"""
