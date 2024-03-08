@@ -172,6 +172,7 @@ def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
                 continue
             else:
                 gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{alt}")
+                break
 
     return gnomad_ids
 
