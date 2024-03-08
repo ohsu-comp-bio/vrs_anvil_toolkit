@@ -9,10 +9,9 @@ from logging.handlers import RotatingFileHandler
 import pathlib
 
 # Set up logging
-log_format = "%(asctime)s %(filename)s [%(levelname)s] %(message)s"
+log_format = "%(asctime)s %(name)s [%(levelname)s] %(message)s"
 
-
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger("vrs_anvil.cli")
 
 
 @click.group(invoke_without_command=True)
@@ -39,7 +38,6 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
             file_handler.setFormatter(logging.Formatter(log_format))
 
             # Add the file handler to the logger
-            # logger = logging.getLogger()
             # logger.addHandler(file_handler)
             # basicConfig call removed, which prevents the default configuration that logs to the console.
             logging.basicConfig(level=_log_level, format=log_format, handlers=[file_handler])
