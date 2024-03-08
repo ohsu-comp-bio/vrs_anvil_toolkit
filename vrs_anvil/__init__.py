@@ -262,6 +262,9 @@ class Manifest(BaseModel):
     cache_enabled: Optional[bool] = True
     """Cache results"""
 
+    compute_for_ref: Optional[bool] = False
+    """Compute reference allele"""
+
     @model_validator(mode='after')
     def check_paths(self) -> 'Manifest':
         """Post init method to set the cache directory."""

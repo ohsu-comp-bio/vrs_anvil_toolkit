@@ -51,7 +51,7 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
                 line_number += 1
                 if line.startswith("#"):
                     continue
-                for gnomad_id in generate_gnomad_ids(line):
+                for gnomad_id in generate_gnomad_ids(line, compute_for_ref=manifest.compute_for_ref):
                     yield {"fmt": "gnomad", "var": gnomad_id}, work_file, line_number
                 if manifest.limit and line_number > manifest.limit:
                     _logger.info(f"Limit of {manifest.limit} reached, stopping")
