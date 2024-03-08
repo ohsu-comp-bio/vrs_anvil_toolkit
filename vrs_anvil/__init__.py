@@ -47,15 +47,25 @@ class CachingAlleleTranslator(AlleleTranslator):
     def __init__(self, data_proxy: SeqRepoDataProxy, normalize: bool = False):
         super().__init__(data_proxy)
         self.normalize = normalize
-        self._cache = Cache(directory=cache_directory('allele_translator'), size_limit=cache_size_limit)
+        self._cache = None
+        if manifest.cache_enabled:
+            self._cache = Cache(directory=cache_directory('allele_translator'), size_limit=cache_size_limit)
+        else:
+            _logger.info("Cache is not enabled")
 
     def translate_from(self, var, fmt=None, **kwargs):
         """Check and update cache"""
-        key = f"{var}-{fmt}"
-        if key in self._cache:
-            return self._cache[key]
+
+        if self._cache:
+            key = f"{var}-{fmt}"
+            if key in self._cache:
+                return self._cache[key]
+
         val = super().translate_from(var, fmt=fmt, **kwargs)
-        self._cache[key] = val
+
+        if self._cache:
+            self._cache[key] = val
+
         return val
 
 
@@ -237,6 +247,12 @@ class Manifest(BaseModel):
 
     normalize: bool = False
     """Normalize the VRS ids"""
+
+    limit: Optional[int] = None
+    """Stop processing after this many lines"""
+
+    cache_enabled: Optional[bool] = True
+    """Cache results"""
 
     @model_validator(mode='after')
     def check_paths(self) -> 'Manifest':

@@ -11,6 +11,9 @@ import vrs_anvil
 from vrs_anvil import Manifest, ThreadedTranslator, generate_gnomad_ids
 from vrs_anvil.collector import collect_manifest_urls
 import gzip
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 def recursive_defaultdict():
@@ -49,6 +52,9 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
                     continue
                 for gnomad_id in generate_gnomad_ids(line):
                     yield {"fmt": "gnomad", "var": gnomad_id}, work_file, line_number
+                if manifest.limit and line_number > manifest.limit:
+                    _logger.info(f"Limit of {manifest.limit} reached, stopping")
+                    break
 
             metrics[key]["status"] = 'finished'
             metrics[key]["end_time"] = time.time()
