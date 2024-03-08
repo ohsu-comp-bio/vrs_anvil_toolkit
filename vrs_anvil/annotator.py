@@ -14,7 +14,7 @@ from vrs_anvil.collector import collect_manifest_urls
 import gzip
 import logging
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger("vrs_anvil.annotator")
 
 
 def recursive_defaultdict():

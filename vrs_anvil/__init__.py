@@ -14,7 +14,7 @@ from ga4gh.vrs.extras.translator import AlleleTranslator
 from glom import glom
 from pydantic import BaseModel, model_validator
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger("vrs_anvil")
 LOGGED_ALREADY = set()
 
 manifest: 'Manifest' = None
@@ -127,7 +127,7 @@ class ThreadedTranslator(BaseModel):
             except Exception as e:
                 result_dict['error'] = str(e)
                 result_dict['stack_trace'] = traceback.format_exc()
-                _logger.debug(result_dict)
+                _logger.warning(result_dict)
             results_queue.put(result_dict)
 
         def _ensure_tuple(item):
