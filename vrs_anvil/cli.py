@@ -27,12 +27,9 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
     _log_level = logging.INFO
     if verbose:
         _log_level = logging.DEBUG
-
     try:
         with open(manifest, 'r') as stream:
             manifest = Manifest.parse_obj(yaml.safe_load(stream))
-            # basicConfig call removed, which prevents the default configuration that logs to the console.
-            # logging.basicConfig(level=_log_level, format=log_format)
 
             # Create a rotating file handler with a max size of 10MB and keep 3 backup files
             log_path = pathlib.Path(manifest.state_directory) / "vrs_anvil.log"
@@ -42,8 +39,11 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
             file_handler.setFormatter(logging.Formatter(log_format))
 
             # Add the file handler to the logger
-            logger = logging.getLogger()
-            logger.addHandler(file_handler)
+            # logger = logging.getLogger()
+            # logger.addHandler(file_handler)
+            # basicConfig call removed, which prevents the default configuration that logs to the console.
+            logging.basicConfig(level=_log_level, format=log_format, handlers=[file_handler])
+
             click.secho(f"🪵  Logging to {log_path}, level {logging.getLevelName(_log_level)}", fg='yellow')
 
             ctx.ensure_object(dict)
