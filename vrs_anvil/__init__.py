@@ -126,6 +126,7 @@ class ThreadedTranslator(BaseModel):
             except Exception as e:
                 result_dict['error'] = str(e)
                 result_dict['stack_trace'] = traceback.format_exc()
+                _logger.debug(result_dict)
             results_queue.put(result_dict)
 
         def _ensure_tuple(item):
@@ -238,6 +239,7 @@ class Manifest(BaseModel):
 
     vcf_files: list[str]
     """The local file paths or URLs to vcf files to be processed"""
+    # TODO - 2x check why local files need to be absolute paths
 
     work_directory: str = "work/"
     """The directory to store intermediate files"""
