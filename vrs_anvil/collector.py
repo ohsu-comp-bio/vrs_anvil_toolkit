@@ -89,4 +89,3 @@ def collect_manifest_urls(manifest: Manifest) -> Generator[str, None, None]:
         # Yield results as they become available
         for _ in as_completed(futures):
             yield _.result()
-
