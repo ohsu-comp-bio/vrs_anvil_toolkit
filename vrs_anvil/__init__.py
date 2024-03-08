@@ -15,6 +15,7 @@ from glom import glom
 from pydantic import BaseModel, model_validator
 
 _logger = logging.getLogger(__name__)
+LOGGED_ALREADY = set()
 
 manifest: 'Manifest' = None
 
@@ -160,10 +161,15 @@ def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
         gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{reference_allele}")
     for alt in alternate_allele.split(","):
         alt = alt.strip()
-        # TODO - do we also need to guard against INS, DEL and other stuff
-        if '*' in alt:
-            _logger.debug("Star allele found: %s", alt)
-            continue
+        # TODO - Should we be raising a ValueError hear and let the caller do the logging?
+        invalid_alts = ['<INS>', '<DEL>', '<DUP>', '<INV>', '<CNV>', '<DUP:TANDEM>', '<DUP:INT>', '<DUP:EXT>', '*']
+        for invalid_alt in invalid_alts:
+            if invalid_alt in alt:
+                _ = f"Invalid allele found: {alt}"
+                if _ not in LOGGED_ALREADY:
+                    LOGGED_ALREADY.add(_)
+                    _logger.error(_)
+                continue
         gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{alt}")
 
     return gnomad_ids
