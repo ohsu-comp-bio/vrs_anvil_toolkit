@@ -72,8 +72,8 @@ def _vrs_generator(manifest: Manifest) -> Generator[dict, None, None]:
         yield result
 
 
-def annotate_all(manifest: Manifest, max_errors: int):
-    """Annotate all the files in the manifest."""
+def annotate_all(manifest: Manifest, max_errors: int) -> pathlib.Path:
+    """Annotate all the files in the manifest. Return a file with metrics."""
 
     # set the manifest in a well known place, TODO: is this really necessary
     vrs_anvil.manifest = manifest
@@ -116,3 +116,4 @@ def annotate_all(manifest: Manifest, max_errors: int):
             if 'errors' in metrics[k] and k != 'total':
                 metrics[k]['errors'] = dict(metrics[k]['errors'])
         yaml.dump(dict(metrics), f)
+    return metrics_file

@@ -52,7 +52,7 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
             ctx.obj['max_errors'] = max_errors
 
             if verbose:
-                click.secho(f"📢 {manifest}", fg='green')
+                click.secho(f"📢  {manifest}", fg='green')
 
     except Exception as exc:
         click.secho(f"{exc}", fg='yellow')
@@ -69,8 +69,8 @@ def annotate_cli(ctx):
         manifest = ctx.obj['manifest']
         _logger.debug(f"Manifest: {ctx.obj['manifest']}")
         click.secho("🚧  annotating variants", fg='yellow')
-        annotate_all(manifest, max_errors=ctx.obj['max_errors'])
-        click.secho(f"🥳  metrics available in {manifest.state_directory}", fg='green')
+        metrics_file = annotate_all(manifest, max_errors=ctx.obj['max_errors'])
+        click.secho(f"🥳  metrics available in {metrics_file}", fg='green')
     except Exception as exc:
         click.secho(f"{exc}", fg='red')
         _logger.exception(exc)
