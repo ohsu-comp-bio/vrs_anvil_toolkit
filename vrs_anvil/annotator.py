@@ -1,6 +1,7 @@
 import pathlib
 import time
 from collections import defaultdict
+from datetime import datetime
 from typing import Generator
 
 import yaml
@@ -105,7 +106,9 @@ def annotate_all(manifest: Manifest, max_errors: int):
     metrics["total"]["successes"] = sum([metrics[key].get("successes", 0) for key in metrics.keys() if key != "total"])
     metrics["total"]["errors"] = sum([sum(metrics[key]["errors"].values()) for key in metrics.keys() if key != "total"])
 
-    metrics_file = pathlib.Path(manifest.state_directory) / "metrics.yaml"
+    # Append timestamp to filename
+    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    metrics_file = pathlib.Path(manifest.state_directory) / f"metrics_{timestamp_str}.yaml"
     with open(metrics_file, "w") as f:
         # clean up the recursive dict into a plain old dict so that it serialized to yaml neatly
         for k, v in metrics.items():
