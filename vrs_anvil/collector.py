@@ -18,7 +18,6 @@ def download_s3_object(bucket_name, object_name, destination_file_name) -> str:
     return destination_file_name
 
 
-# TODO - not tested
 def download_google_blob(bucket_name, source_blob_name, destination_file_name) -> str:
     """Downloads a blob from the bucket."""
     if os.path.exists(destination_file_name):
