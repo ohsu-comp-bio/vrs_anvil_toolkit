@@ -170,7 +170,8 @@ def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
                     LOGGED_ALREADY.add(_)
                     _logger.error(_)
                 continue
-            gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{alt}")
+            else:
+                gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{alt}")
 
     return gnomad_ids
 
