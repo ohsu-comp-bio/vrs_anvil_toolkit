@@ -12,12 +12,12 @@ In addition, this project facilitates the retrieval of evidence associated with 
 ## Features
 
 1. **VCF File Processing:**
-   - The project includes modules for reading and parsing VCF files, extracting relevant genomic information.
+   - Streamlines reading and parsing of VCF files, to extract relevant genomic information.
 
 2. **GA4GH VRS Identifier Lookup:**
    - Utilizes the GA4GH VRS API to perform lookups for each genomic variation mentioned in the VCF file.
-   - Retrieves standardized identifiers for the variations, enhancing interoperability with GA4GH-compliant systems.
-    - GA4GH MetaKB Service Integration:  Utilizes the GA4GH MetaKB service to query and retrieve evidence associated with the specified genomic alleles.
+   - Retrieves standardized identifiers for the alleles, enhancing interoperability with GA4GH-compliant systems.
+   - GA4GH MetaKB Service Integration:  Utilizes the GA4GH MetaKB service to query and retrieve evidence associated with the specified genomic alleles.
 3. **Output Generation:**
    - Generates summary metrics about throughput, errors, and evidence hits and misses
    - Optionally, generates a processed VCF file with additional GA4GH VRS identifiers for each genomic variation.
@@ -25,7 +25,7 @@ In addition, this project facilitates the retrieval of evidence associated with 
 
 
 4. **Error Handling:**
-   - Implements robust error handling to address issues like invalid input files, connectivity problems with the GA4GH VRS API, invalid variants and more.
+   - Implements robust error handling to address issues like invalid input files, invalid variants, connectivity problems with the GA4GH MetaKB API, and more.
 
 ## Getting Started
 
@@ -66,9 +66,7 @@ vrs_anvil input.vcf
 Replace `input.vcf` with the name of your VCF file. The processed VCF file with GA4GH VRS identifiers will be generated as `output_processed.vcf` in the same directory.
 
 **Developing in Python**
-For an example notebook on usage, see [1000g_patient_na12878_evidence.ipynb](scripts/1000g_patient_na12878_evidence.ipynb). If working on
-
-Terra
+For an example notebook on usage, see [1000g_patient_na12878_evidence.ipynb](scripts/1000g_patient_na12878_evidence.ipynb). If working on Terra, see the vrs-anvil workspace.
 
 
 ### Contributing

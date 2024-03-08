@@ -10,7 +10,7 @@ Thank you for considering contributing to our Python project! By contributing, y
 
 ```bash
 git clone https://github.com/ohsu-comp-bio/vrs-python-testing
-python3.10 -m venv venv; source venv/bin/activate
+python3 -m venv venv; source venv/bin/activate
 bash scripts/setup.sh
 pip install -r requirements-dev.txt
 pip install -e .
