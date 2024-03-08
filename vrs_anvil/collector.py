@@ -1,4 +1,5 @@
 import os
+import pathlib
 from typing import Generator
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -24,8 +25,10 @@ def download_google_blob(bucket_name, source_blob_name, destination_file_name) -
         return destination_file_name
 
     storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
+    assert 'GOOGLE_PROJECT' in os.environ, "GOOGLE_PROJECT environment variable not set"
+    bucket = storage_client.bucket(bucket_name, user_project=os.getenv('GOOGLE_PROJECT'))
     blob = bucket.blob(source_blob_name)
+    pathlib.Path(destination_file_name).parent.mkdir(parents=True, exist_ok=True)
     blob.download_to_filename(destination_file_name)
     return destination_file_name
 
@@ -66,7 +69,7 @@ def create_symlink_to_work_directory(work_directory: str, vcf_file: str) -> str:
 def collect_manifest_urls(manifest: Manifest) -> Generator[str, None, None]:
     """Collect the URLs from the manifest and download them."""
     # TODO - is this really too many threads? each download is IO bound
-    with ThreadPoolExecutor(max_workers=manifest.num_threads) as executor:
+    with ThreadPoolExecutor(max_workers=max(len(manifest.vcf_files), 8)) as executor:
         futures = []
         for vcf_file in manifest.vcf_files:
             if vcf_file.startswith("http"):
@@ -86,3 +89,4 @@ def collect_manifest_urls(manifest: Manifest) -> Generator[str, None, None]:
         # Yield results as they become available
         for _ in as_completed(futures):
             yield _.result()
+

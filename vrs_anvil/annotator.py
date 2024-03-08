@@ -10,6 +10,7 @@ from tqdm import tqdm
 import vrs_anvil
 from vrs_anvil import Manifest, ThreadedTranslator, generate_gnomad_ids
 from vrs_anvil.collector import collect_manifest_urls
+import gzip
 
 
 def recursive_defaultdict():
@@ -30,9 +31,13 @@ def _work_file_generator(manifest: Manifest) -> Generator[pathlib.Path, None, No
 
 def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
     """Return a generator lines in the vcf."""
-    for work_file in tqdm(_work_file_generator(manifest)):
+    for work_file in tqdm(_work_file_generator(manifest), total=len(manifest.vcf_files)):
         line_number = 0
-        with open(work_file, "r") as f:
+        if 'gz' in str(work_file):
+            f = gzip.open(work_file, 'rt')
+        else:
+            f = open(work_file, "r")
+        with f:
             key = str(work_file)
             metrics[key]["status"] = 'started'
             metrics[key]["start_time"] = time.time()
@@ -55,7 +60,7 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
 def _vrs_generator(manifest: Manifest) -> Generator[dict, None, None]:
     """Return a generator for the VRS ids."""
     tlr = ThreadedTranslator(normalize=manifest.normalize)
-    for result in tlr.threaded_translate_from(generator=tqdm(_vcf_generator(manifest)),
+    for result in tlr.threaded_translate_from(generator=tqdm(_vcf_generator(manifest), total=4000000),
                                               num_threads=manifest.num_threads):
         yield result
 
