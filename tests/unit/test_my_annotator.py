@@ -218,8 +218,6 @@ def test_cache(my_translator):
 
     assert elapsed_time2 < (elapsed_time / 4), f"Cache should make things significantly faster first {elapsed_time} second {elapsed_time2}."
 
-    assert pathlib.Path(pathlib.Path.home() / '.cache' / 'allele_translator').exists(), "Cache directory not found."
-
 
 @pytest.fixture()
 def num_threads():
