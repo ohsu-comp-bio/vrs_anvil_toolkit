@@ -14,9 +14,15 @@ from ga4gh.vrs.extras.translator import AlleleTranslator
 from glom import glom
 from pydantic import BaseModel, model_validator
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger("vrs_anvil")
+LOGGED_ALREADY = set()
 
 manifest: 'Manifest' = None
+
+# TODO - read from manifest
+gigabytes = 20
+bytes_in_a_gigabyte = 1024 ** 3  # 1 gigabyte = 1024^3 bytes
+cache_size_limit = gigabytes * bytes_in_a_gigabyte
 
 
 def seqrepo_dir():
@@ -42,15 +48,25 @@ class CachingAlleleTranslator(AlleleTranslator):
     def __init__(self, data_proxy: SeqRepoDataProxy, normalize: bool = False):
         super().__init__(data_proxy)
         self.normalize = normalize
-        self._cache = Cache(directory=cache_directory('allele_translator'))
+        self._cache = None
+        if manifest.cache_enabled:
+            self._cache = Cache(directory=cache_directory('allele_translator'), size_limit=cache_size_limit)
+        else:
+            _logger.info("Cache is not enabled")
 
     def translate_from(self, var, fmt=None, **kwargs):
         """Check and update cache"""
-        key = f"{var}-{fmt}"
-        if key in self._cache:
-            return self._cache[key]
+
+        if self._cache:
+            key = f"{var}-{fmt}"
+            if key in self._cache:
+                return self._cache[key]
+
         val = super().translate_from(var, fmt=fmt, **kwargs)
-        self._cache[key] = val
+
+        if self._cache:
+            self._cache[key] = val
+
         return val
 
 
@@ -111,6 +127,7 @@ class ThreadedTranslator(BaseModel):
             except Exception as e:
                 result_dict['error'] = str(e)
                 result_dict['stack_trace'] = traceback.format_exc()
+                _logger.warning(result_dict)
             results_queue.put(result_dict)
 
         def _ensure_tuple(item):
@@ -144,11 +161,21 @@ def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
         gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{reference_allele}")
     for alt in alternate_allele.split(","):
         alt = alt.strip()
-        # TODO - do we also need to guard against INS, DEL and other stuff
-        if '*' in alt:
-            _logger.debug("Star allele found: %s", alt)
-            continue
-        gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{alt}")
+        # TODO - Should we be raising a ValueError hear and let the caller do the logging?
+        # TODO - Should this be a config in the manifest?
+        # ['<INS>', '<DEL>', '<DUP>', '<INV>', '<CNV>', '<DUP:TANDEM>', '<DUP:INT>', '<DUP:EXT>', '*']
+        invalid_alts = ['INS', 'DEL', 'DUP', 'INV', 'CNV', 'TANDEM', 'INT', 'EXT', '*']
+        is_valid = True
+        for invalid_alt in invalid_alts:
+            if invalid_alt in alt:
+                is_valid = False
+                _ = f"Invalid allele found: {alt}"
+                if _ not in LOGGED_ALREADY:
+                    LOGGED_ALREADY.add(_)
+                    _logger.error(_)
+                break
+        if is_valid:
+            gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{alt}")
 
     return gnomad_ids
 
@@ -223,6 +250,7 @@ class Manifest(BaseModel):
 
     vcf_files: list[str]
     """The local file paths or URLs to vcf files to be processed"""
+    # TODO - 2x check why local files need to be absolute paths
 
     work_directory: str = "work/"
     """The directory to store intermediate files"""
@@ -232,6 +260,18 @@ class Manifest(BaseModel):
 
     normalize: bool = False
     """Normalize the VRS ids"""
+
+    limit: Optional[int] = None
+    """Stop processing after this many lines"""
+
+    cache_enabled: Optional[bool] = True
+    """Cache results"""
+
+    compute_for_ref: Optional[bool] = False
+    """Compute reference allele"""
+
+    estimated_vcf_lines: Optional[int] = 4000000
+    """How many lines per vcf file?  Used for progress bar"""
 
     @model_validator(mode='after')
     def check_paths(self) -> 'Manifest':

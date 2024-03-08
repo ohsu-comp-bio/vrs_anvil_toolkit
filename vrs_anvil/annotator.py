@@ -1,6 +1,7 @@
 import pathlib
 import time
 from collections import defaultdict
+from datetime import datetime
 from typing import Generator
 
 import yaml
@@ -10,6 +11,10 @@ from tqdm import tqdm
 import vrs_anvil
 from vrs_anvil import Manifest, ThreadedTranslator, generate_gnomad_ids
 from vrs_anvil.collector import collect_manifest_urls
+import gzip
+import logging
+
+_logger = logging.getLogger("vrs_anvil.annotator")
 
 
 def recursive_defaultdict():
@@ -30,9 +35,13 @@ def _work_file_generator(manifest: Manifest) -> Generator[pathlib.Path, None, No
 
 def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
     """Return a generator lines in the vcf."""
-    for work_file in tqdm(_work_file_generator(manifest)):
+    for work_file in tqdm(_work_file_generator(manifest), total=len(manifest.vcf_files)):
         line_number = 0
-        with open(work_file, "r") as f:
+        if 'gz' in str(work_file):
+            f = gzip.open(work_file, 'rt')
+        else:
+            f = open(work_file, "r")
+        with f:
             key = str(work_file)
             metrics[key]["status"] = 'started'
             metrics[key]["start_time"] = time.time()
@@ -42,8 +51,11 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
                 line_number += 1
                 if line.startswith("#"):
                     continue
-                for gnomad_id in generate_gnomad_ids(line):
+                for gnomad_id in generate_gnomad_ids(line, compute_for_ref=manifest.compute_for_ref):
                     yield {"fmt": "gnomad", "var": gnomad_id}, work_file, line_number
+                if manifest.limit and line_number > manifest.limit:
+                    _logger.info(f"Limit of {manifest.limit} reached, stopping")
+                    break
 
             metrics[key]["status"] = 'finished'
             metrics[key]["end_time"] = time.time()
@@ -55,13 +67,15 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
 def _vrs_generator(manifest: Manifest) -> Generator[dict, None, None]:
     """Return a generator for the VRS ids."""
     tlr = ThreadedTranslator(normalize=manifest.normalize)
-    for result in tlr.threaded_translate_from(generator=tqdm(_vcf_generator(manifest)),
-                                              num_threads=manifest.num_threads):
+    for result in tlr.threaded_translate_from(
+        generator=tqdm(_vcf_generator(manifest), total=manifest.estimated_vcf_lines),
+        num_threads=manifest.num_threads
+    ):
         yield result
 
 
-def annotate_all(manifest: Manifest, max_errors: int):
-    """Annotate all the files in the manifest."""
+def annotate_all(manifest: Manifest, max_errors: int) -> pathlib.Path:
+    """Annotate all the files in the manifest. Return a file with metrics."""
 
     # set the manifest in a well known place, TODO: is this really necessary
     vrs_anvil.manifest = manifest
@@ -94,7 +108,9 @@ def annotate_all(manifest: Manifest, max_errors: int):
     metrics["total"]["successes"] = sum([metrics[key].get("successes", 0) for key in metrics.keys() if key != "total"])
     metrics["total"]["errors"] = sum([sum(metrics[key]["errors"].values()) for key in metrics.keys() if key != "total"])
 
-    metrics_file = pathlib.Path(manifest.state_directory) / "metrics.yaml"
+    # Append timestamp to filename
+    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    metrics_file = pathlib.Path(manifest.state_directory) / f"metrics_{timestamp_str}.yaml"
     with open(metrics_file, "w") as f:
         # clean up the recursive dict into a plain old dict so that it serialized to yaml neatly
         for k, v in metrics.items():
@@ -102,3 +118,4 @@ def annotate_all(manifest: Manifest, max_errors: int):
             if 'errors' in metrics[k] and k != 'total':
                 metrics[k]['errors'] = dict(metrics[k]['errors'])
         yaml.dump(dict(metrics), f)
+    return metrics_file
