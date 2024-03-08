@@ -163,16 +163,17 @@ def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
         alt = alt.strip()
         # TODO - Should we be raising a ValueError hear and let the caller do the logging?
         invalid_alts = ['<INS>', '<DEL>', '<DUP>', '<INV>', '<CNV>', '<DUP:TANDEM>', '<DUP:INT>', '<DUP:EXT>', '*']
+        is_valid = True
         for invalid_alt in invalid_alts:
             if invalid_alt in alt:
+                is_valid = False
                 _ = f"Invalid allele found: {alt}"
                 if _ not in LOGGED_ALREADY:
                     LOGGED_ALREADY.add(_)
                     _logger.error(_)
                 break
-            else:
-                gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{alt}")
-                break
+        if is_valid:
+            gnomad_ids.append(f"{gnomad_loc}-{reference_allele}-{alt}")
 
     return gnomad_ids
 
