@@ -67,8 +67,10 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
 def _vrs_generator(manifest: Manifest) -> Generator[dict, None, None]:
     """Return a generator for the VRS ids."""
     tlr = ThreadedTranslator(normalize=manifest.normalize)
-    for result in tlr.threaded_translate_from(generator=tqdm(_vcf_generator(manifest), total=4000000),
-                                              num_threads=manifest.num_threads):
+    for result in tlr.threaded_translate_from(
+        generator=tqdm(_vcf_generator(manifest), total=manifest.estimated_vcf_lines),
+        num_threads=manifest.num_threads
+    ):
         yield result
 
 

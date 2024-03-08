@@ -268,6 +268,9 @@ class Manifest(BaseModel):
     compute_for_ref: Optional[bool] = False
     """Compute reference allele"""
 
+    estimated_vcf_lines: Optional[int] = 4000000
+    """How many lines per vcf file?  Used for progress bar"""
+
     @model_validator(mode='after')
     def check_paths(self) -> 'Manifest':
         """Post init method to set the cache directory."""
