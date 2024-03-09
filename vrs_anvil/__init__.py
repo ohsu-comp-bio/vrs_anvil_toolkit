@@ -217,7 +217,6 @@ class MetaKBProxy(BaseModel):
             if reload_cache:
                 for _ in meta_kb_ids(metakb_path):
                     cache.set(_, True)
-            print(cache.stats())
         self._cache = cache
 
     def get(self, vrs_id: str) -> bool:
@@ -273,6 +272,9 @@ class Manifest(BaseModel):
     estimated_vcf_lines: Optional[int] = 4000000
     """How many lines per vcf file?  Used for progress bar"""
 
+    metakb_directory: str
+    """Where the CDM files are located.  This is a directory containing json files"""
+
     @model_validator(mode='after')
     def check_paths(self) -> 'Manifest':
         """Post init method to set the cache directory."""
@@ -280,10 +282,15 @@ class Manifest(BaseModel):
         self.work_directory = str(pathlib.Path(self.work_directory).expanduser())
         self.cache_directory = str(pathlib.Path(self.cache_directory).expanduser())
         self.state_directory = str(pathlib.Path(self.state_directory).expanduser())
-        if not pathlib.Path(self.seqrepo_directory).exists():
-            raise ValueError(f"seqrepo_directory {self.seqrepo_directory} does not exist")
+        self.metakb_directory = str(pathlib.Path(self.metakb_directory).expanduser())
+
+        for _ in ['seqrepo_directory', 'metakb_directory']:
+            if not pathlib.Path(getattr(self, _)).exists():
+                raise ValueError(f"{_} does not exist")
+
         for _ in ['work_directory', 'cache_directory', 'state_directory']:
             if not pathlib.Path(getattr(self, _)).exists():
                 pathlib.Path(getattr(self, _)).mkdir(parents=True, exist_ok=True)
                 _logger.debug(f"Created directory {getattr(self, _)}")
+
         return self

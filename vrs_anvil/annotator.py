@@ -46,6 +46,7 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
             metrics[key]["status"] = 'started'
             metrics[key]["start_time"] = time.time()
             metrics[key]["successes"] = 0
+            metrics[key]["metakb_hits"] = 0
 
             for line in f:
                 line_number += 1
@@ -53,6 +54,7 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
                     continue
                 for gnomad_id in generate_gnomad_ids(line, compute_for_ref=manifest.compute_for_ref):
                     yield {"fmt": "gnomad", "var": gnomad_id}, work_file, line_number
+
                 if manifest.limit and line_number > manifest.limit:
                     _logger.info(f"Limit of {manifest.limit} reached, stopping")
                     break
@@ -74,11 +76,17 @@ def _vrs_generator(manifest: Manifest) -> Generator[dict, None, None]:
         yield result
 
 
+def vrs_ids(allele: Allele) -> list[str]:
+    """Return a list of VRS ids from an allele."""
+    return [allele.id]  # , allele.location.id, allele.location.sequence_id]
+
+
 def annotate_all(manifest: Manifest, max_errors: int) -> pathlib.Path:
     """Annotate all the files in the manifest. Return a file with metrics."""
 
     # set the manifest in a well known place, TODO: is this really necessary
     vrs_anvil.manifest = manifest
+    metakb_proxy = vrs_anvil.MetaKBProxy(metakb_path=pathlib.Path(manifest.metakb_directory))
 
     metrics["total"]["start_time"] = time.time()
     total_errors = 0
@@ -102,6 +110,9 @@ def annotate_all(manifest: Manifest, max_errors: int) -> pathlib.Path:
             result = result_dict.get('result', None)
             assert isinstance(result, Allele), f"result is not the expected Pydantic Model {type(result)} {result_dict.keys()}"
             metrics[key]["successes"] += 1
+            # check metaKB cache
+            if any([metakb_proxy.get(_) for _ in vrs_ids(result)]):
+                metrics[key]["metakb_hits"] += 1
 
     metrics["total"]["end_time"] = time.time()
     metrics["total"]["elapsed_time"] = metrics["total"]["end_time"] - metrics["total"]["start_time"]

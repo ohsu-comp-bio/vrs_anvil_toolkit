@@ -20,3 +20,5 @@ vcf_files:
 seqrepo_directory: "~/seqrepo/latest"
 
 normalize: false
+
+metakb_directory: "tests/fixtures/metakb"
