@@ -112,6 +112,7 @@ def annotate_all(manifest: Manifest, max_errors: int) -> pathlib.Path:
             metrics[key]["successes"] += 1
             # check metaKB cache
             if any([metakb_proxy.get(_) for _ in vrs_ids(result)]):
+                _logger.info(f"VRS id {result.id} found in metakb. {result_dict}")
                 metrics[key]["metakb_hits"] += 1
 
     metrics["total"]["end_time"] = time.time()
