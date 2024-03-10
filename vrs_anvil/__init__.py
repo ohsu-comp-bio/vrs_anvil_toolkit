@@ -1,10 +1,7 @@
 import json
 import logging
 import pathlib
-import queue
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from threading import current_thread
 from typing import Optional, Generator
 
 from biocommons.seqrepo import SeqRepo
@@ -86,13 +83,7 @@ class ThreadedTranslator(BaseModel):
     _thread_resources: dict = {}
     normalize: Optional[bool] = False
 
-    def _thread_initializer(self):
-        """Initialize resources for use in threads."""
-        thread = current_thread()
-        translator = caching_allele_translator_factory(normalize=self.normalize)
-        self._thread_resources[thread.name] = {'translator': translator}
-
-    def threaded_translate_from(self, generator, num_threads=8):
+    def threaded_translate_from(self, generator, num_threads=8) -> Generator[dict, None, None]:
         """
         Process a generator using multithreading and yield results as they occur.
 
@@ -104,23 +95,29 @@ class ThreadedTranslator(BaseModel):
         Yields:
         - Results from applying the function to each element of the generator.
         """
-        results_queue = queue.Queue()
 
-        def process_item(item):
+        translator = caching_allele_translator_factory(normalize=self.normalize)
+
+        def _ensure_tuple(item):
+            """Ensure that the item is a tuple (item, file, line)."""
+            if not isinstance(item, tuple):
+                return item, None, None
+            return item
+
+        def _process_item(item):
             """Process an item from the generator.
             An item is a tuple:
             - 0: the dictionary with the fmt and var keys
-            - 1: the file path of the vcf (or other source) optional
-            - 2: the line number in the vcf optional
+            - 1: the file path of the vcf (or other source) (optional)
+            - 2: the line number in the vcf (optional)
             """
-
+            nonlocal translator
             try:
                 result_dict = {'parameters': item[0], 'file': None, 'line': None}
                 if len(item) > 1:
                     result_dict['file'] = item[1]
                 if len(item) > 2:
                     result_dict['line'] = item[2]
-                translator = self._thread_resources[current_thread().name]['translator']
                 result = translator.translate_from(**item[0])
                 # result = {'location': {}, 'state': {}, 'type': {}}  # TESTING dummy results:
                 result_dict['result'] = result
@@ -128,20 +125,19 @@ class ThreadedTranslator(BaseModel):
                 result_dict['error'] = str(e)
                 result_dict['stack_trace'] = traceback.format_exc()
                 _logger.warning(result_dict)
-            results_queue.put(result_dict)
 
-        def _ensure_tuple(item):
-            if isinstance(item, dict):
-                return item, None, None
-            return item
+            return result_dict
 
-        with ThreadPoolExecutor(max_workers=num_threads, initializer=self._thread_initializer) as executor:
-            # Submit each item in the generator to the executor
-            futures = {executor.submit(process_item, _ensure_tuple(item)): item for item in generator}
+        # main ...
+        c = 0
 
-            # Yield results as they become available
-            for _ in as_completed(futures):
-                yield results_queue.get()
+        for _ in generator:
+            yield _process_item(_ensure_tuple(_))
+            c += 1
+
+        del translator
+
+        _logger.info(f"threaded_translate_from: Finished processing {c} items.")
 
 
 def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
