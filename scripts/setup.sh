@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # create python package
-python3.10 -m venv venv3.10
+python3.10 -m venv venv
 source venv3.10/bin/activate
 pip install -r requirements.txt
 
