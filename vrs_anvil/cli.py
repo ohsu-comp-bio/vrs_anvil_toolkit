@@ -9,7 +9,7 @@ from logging.handlers import RotatingFileHandler
 import pathlib
 
 # Set up logging
-log_format = "%(asctime)s %(name)s [%(levelname)s] %(message)s"
+log_format = "%(asctime)s %(threadName)s %(name)s [%(levelname)s] %(message)s"
 
 _logger = logging.getLogger("vrs_anvil.cli")
 
@@ -68,7 +68,7 @@ def annotate_cli(ctx):
         _logger.debug(f"Manifest: {ctx.obj['manifest']}")
         click.secho("🚧  annotating variants", fg='yellow')
         metrics_file = annotate_all(manifest, max_errors=ctx.obj['max_errors'])
-        click.secho(f"🥳  metrics available in {metrics_file}", fg='green')
+        click.secho(f"📊  metrics available in {metrics_file}", fg='green')
     except Exception as exc:
         click.secho(f"{exc}", fg='red')
         _logger.exception(exc)

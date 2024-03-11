@@ -1,11 +1,10 @@
 import json
 import logging
+import os
 import pathlib
-import queue
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from threading import current_thread
 from typing import Optional, Generator
+import zipfile
 
 from biocommons.seqrepo import SeqRepo
 from diskcache import Cache
@@ -13,15 +12,16 @@ from ga4gh.vrs.dataproxy import SeqRepoDataProxy
 from ga4gh.vrs.extras.translator import AlleleTranslator
 from glom import glom
 from pydantic import BaseModel, model_validator
+import requests
 
 _logger = logging.getLogger("vrs_anvil")
 LOGGED_ALREADY = set()
 
-manifest: 'Manifest' = None
+manifest: "Manifest" = None
 
 # TODO - read from manifest
 gigabytes = 20
-bytes_in_a_gigabyte = 1024 ** 3  # 1 gigabyte = 1024^3 bytes
+bytes_in_a_gigabyte = 1024**3  # 1 gigabyte = 1024^3 bytes
 cache_size_limit = gigabytes * bytes_in_a_gigabyte
 
 
@@ -30,8 +30,8 @@ def seqrepo_dir():
     with open(".env") as f:
         for line in f:
             # Ignore comments and empty lines
-            if line.strip() and not line.strip().startswith('#'):
-                key, value = line.strip().split('=', 1)
+            if line.strip() and not line.strip().startswith("#"):
+                key, value = line.strip().split("=", 1)
                 if key == "SEQREPO_ROOT":
                     return value + "/latest"
 
@@ -43,6 +43,7 @@ def cache_directory(cache_name: str) -> str:
 
 class CachingAlleleTranslator(AlleleTranslator):
     """A subclass of AlleleTranslator that uses cache results and adds a method to run in a threaded fashion."""
+
     _cache: Cache = None
 
     def __init__(self, data_proxy: SeqRepoDataProxy, normalize: bool = False):
@@ -50,7 +51,10 @@ class CachingAlleleTranslator(AlleleTranslator):
         self.normalize = normalize
         self._cache = None
         if manifest.cache_enabled:
-            self._cache = Cache(directory=cache_directory('allele_translator'), size_limit=cache_size_limit)
+            self._cache = Cache(
+                directory=cache_directory("allele_translator"),
+                size_limit=cache_size_limit,
+            )
         else:
             _logger.info("Cache is not enabled")
 
@@ -70,7 +74,9 @@ class CachingAlleleTranslator(AlleleTranslator):
         return val
 
 
-def caching_allele_translator_factory(normalize: bool = False, seqrepo_directory: str = None):
+def caching_allele_translator_factory(
+    normalize: bool = False, seqrepo_directory: str = None
+):
     """Return a CachingAlleleTranslator instance with local seqrepo"""
     if not seqrepo_directory:
         seqrepo_directory = manifest.seqrepo_directory
@@ -83,16 +89,13 @@ def caching_allele_translator_factory(normalize: bool = False, seqrepo_directory
 
 class ThreadedTranslator(BaseModel):
     """A class to run the translation in a threaded fashion."""
+
     _thread_resources: dict = {}
     normalize: Optional[bool] = False
 
-    def _thread_initializer(self):
-        """Initialize resources for use in threads."""
-        thread = current_thread()
-        translator = caching_allele_translator_factory(normalize=self.normalize)
-        self._thread_resources[thread.name] = {'translator': translator}
-
-    def threaded_translate_from(self, generator, num_threads=8):
+    def threaded_translate_from(
+        self, generator, num_threads=8
+    ) -> Generator[dict, None, None]:
         """
         Process a generator using multithreading and yield results as they occur.
 
@@ -104,51 +107,56 @@ class ThreadedTranslator(BaseModel):
         Yields:
         - Results from applying the function to each element of the generator.
         """
-        results_queue = queue.Queue()
 
-        def process_item(item):
-            """Process an item from the generator.
-            An item is a tuple:
-            - 0: the dictionary with the fmt and var keys
-            - 1: the file path of the vcf (or other source) optional
-            - 2: the line number in the vcf optional
-            """
-
-            try:
-                result_dict = {'parameters': item[0], 'file': None, 'line': None}
-                if len(item) > 1:
-                    result_dict['file'] = item[1]
-                if len(item) > 2:
-                    result_dict['line'] = item[2]
-                translator = self._thread_resources[current_thread().name]['translator']
-                result = translator.translate_from(**item[0])
-                # result = {'location': {}, 'state': {}, 'type': {}}  # TESTING dummy results:
-                result_dict['result'] = result
-            except Exception as e:
-                result_dict['error'] = str(e)
-                result_dict['stack_trace'] = traceback.format_exc()
-                _logger.warning(result_dict)
-            results_queue.put(result_dict)
+        translator = caching_allele_translator_factory(normalize=self.normalize)
 
         def _ensure_tuple(item):
-            if isinstance(item, dict):
+            """Ensure that the item is a tuple (item, file, line)."""
+            if not isinstance(item, tuple):
                 return item, None, None
             return item
 
-        with ThreadPoolExecutor(max_workers=num_threads, initializer=self._thread_initializer) as executor:
-            # Submit each item in the generator to the executor
-            futures = {executor.submit(process_item, _ensure_tuple(item)): item for item in generator}
+        def _process_item(item):
+            """Process an item from the generator.
+            An item is a tuple:
+            - 0: the dictionary with the fmt and var keys
+            - 1: the file path of the vcf (or other source) (optional)
+            - 2: the line number in the vcf (optional)
+            """
+            nonlocal translator
+            try:
+                result_dict = {"parameters": item[0], "file": None, "line": None}
+                if len(item) > 1:
+                    result_dict["file"] = item[1]
+                if len(item) > 2:
+                    result_dict["line"] = item[2]
+                result = translator.translate_from(**item[0])
+                # result = {'location': {}, 'state': {}, 'type': {}}  # TESTING dummy results:
+                result_dict["result"] = result
+            except Exception as e:
+                result_dict["error"] = str(e)
+                result_dict["stack_trace"] = traceback.format_exc()
+                _logger.warning(result_dict)
 
-            # Yield results as they become available
-            for _ in as_completed(futures):
-                yield results_queue.get()
+            return result_dict
+
+        # main ...
+        c = 0
+
+        for _ in generator:
+            yield _process_item(_ensure_tuple(_))
+            c += 1
+
+        del translator
+
+        _logger.info(f"threaded_translate_from: Finished processing {c} items.")
 
 
 def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
     """Assuming a standard VCF format with tab-separated fields, generate a gnomAD-like ID from a VCF line.
     see https://github.com/ga4gh/vrs-python/blob/main/src/ga4gh/vrs/extras/vcf_annotation.py#L386-L411
     """
-    fields = vcf_line.strip().split('\t')
+    fields = vcf_line.strip().split("\t")
     gnomad_ids = []
     # Extract relevant information (you may need to adjust these indices based on your VCF format)
     chromosome = fields[0]
@@ -164,7 +172,7 @@ def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
         # TODO - Should we be raising a ValueError hear and let the caller do the logging?
         # TODO - Should this be a config in the manifest?
         # ['<INS>', '<DEL>', '<DUP>', '<INV>', '<CNV>', '<DUP:TANDEM>', '<DUP:INT>', '<DUP:EXT>', '*']
-        invalid_alts = ['INS', 'DEL', 'DUP', 'INV', 'CNV', 'TANDEM', 'INT', 'EXT', '*']
+        invalid_alts = ["INS", "DEL", "DUP", "INV", "CNV", "TANDEM", "INT", "EXT", "*"]
         is_valid = True
         for invalid_alt in invalid_alts:
             if invalid_alt in alt:
@@ -203,6 +211,7 @@ def find_items_with_key(dictionary, key_to_find):
 
 class MetaKBProxy(BaseModel):
     """A proxy for the MetaKB, maintains a cache of VRS ids."""
+
     metakb_path: pathlib.Path
     _cache: Optional[Cache] = None
 
@@ -210,12 +219,12 @@ class MetaKBProxy(BaseModel):
         super().__init__(metakb_path=metakb_path, _cache=cache)
         if cache is None:
             reload_cache = False
-            if not (metakb_path / 'cache').is_dir():
+            if not (metakb_path / "cache").is_dir():
                 reload_cache = True
-            cache = Cache(directory=cache_directory('metakb'))
+            cache = Cache(directory=cache_directory("metakb"))
             cache.stats(enable=True)
             if reload_cache:
-                for _ in meta_kb_ids(metakb_path):
+                for _ in metakb_ids(metakb_path):
                     cache.set(_, True)
         self._cache = cache
 
@@ -224,17 +233,60 @@ class MetaKBProxy(BaseModel):
         return self._cache.get(vrs_id, False)
 
 
-def meta_kb_ids(metakb_path) -> Generator[str, None, None]:
+def metakb_ids(metakb_path) -> Generator[str, None, None]:
     """Find all the applicable vrs ids in the metakb files."""
+    if len(list(pathlib.Path(metakb_path).glob("*.json"))) == 0:
+        _get_metakb_models(metakb_path)
+
     for file_name in pathlib.Path(metakb_path).glob("*.json"):
         if file_name.is_file():
-            with open(file_name, 'r') as file:
+            with open(file_name, "r") as file:
                 data = json.loads(file.read())
-                yield from ([_ for _ in find_items_with_key(data, 'id') if _.startswith('ga4gh:VA')])
+                yield from (
+                    [
+                        _
+                        for _ in find_items_with_key(data, "id")
+                        if _.startswith("ga4gh:VA")
+                    ]
+                )
+
+
+def _get_metakb_models(metakb_path):
+    def _download_s3(url: str, outfile_path: pathlib.Path) -> None:
+        """Download objects from public s3 bucket
+
+        :param url: URL for metakb file in s3 bucket
+        :param outfile_path: Path where file should be saved
+        """
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            with open(outfile_path, "wb") as h:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:
+                        h.write(chunk)
+
+    pathlib.Path(metakb_path).mkdir(exist_ok=True)
+
+    json_files = ["civic_cdm_20240103.json", "moa_cdm_20240103.json"]
+
+    for json_file in json_files:
+        json_path = f"{metakb_path}/{json_file}"
+
+        url = (
+            "https://vicc-metakb.s3.us-east-2.amazonaws.com"
+            + f"/cdm/20240103/{json_file}.zip"
+        )
+        zip_path = f"{json_path}.zip"
+
+        _download_s3(url, zip_path)
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall(metakb_path)
+        os.remove(zip_path)
 
 
 class Manifest(BaseModel):
     """A class to represent the manifest file."""
+
     cache_directory: str = "cache/"
     """Path to the cache directory, defaults to cache/ (relative to the root of the repository)"""
 
@@ -275,8 +327,8 @@ class Manifest(BaseModel):
     metakb_directory: str
     """Where the CDM files are located.  This is a directory containing json files"""
 
-    @model_validator(mode='after')
-    def check_paths(self) -> 'Manifest':
+    @model_validator(mode="after")
+    def check_paths(self) -> "Manifest":
         """Post init method to set the cache directory."""
         self.seqrepo_directory = str(pathlib.Path(self.seqrepo_directory).expanduser())
         self.work_directory = str(pathlib.Path(self.work_directory).expanduser())
@@ -284,11 +336,11 @@ class Manifest(BaseModel):
         self.state_directory = str(pathlib.Path(self.state_directory).expanduser())
         self.metakb_directory = str(pathlib.Path(self.metakb_directory).expanduser())
 
-        for _ in ['seqrepo_directory', 'metakb_directory']:
+        for _ in ["seqrepo_directory", "metakb_directory"]:
             if not pathlib.Path(getattr(self, _)).exists():
                 raise ValueError(f"{_} does not exist")
 
-        for _ in ['work_directory', 'cache_directory', 'state_directory']:
+        for _ in ["work_directory", "cache_directory", "state_directory"]:
             if not pathlib.Path(getattr(self, _)).exists():
                 pathlib.Path(getattr(self, _)).mkdir(parents=True, exist_ok=True)
                 _logger.debug(f"Created directory {getattr(self, _)}")
