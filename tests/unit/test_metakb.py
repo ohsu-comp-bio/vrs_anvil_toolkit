@@ -10,7 +10,7 @@ def expected_vrs_id_count():
     return 2970
 
 
-def test_metakb_ids(metakb_directory, expected_vrs_id_count, initialized_manifest):
+def test_metakb_ids(metakb_directory, expected_vrs_id_count):
     """Test metakb ids."""
     vrs_ids = [_ for _ in metakb_ids(metakb_directory)]
     vrs_count = len(vrs_ids)

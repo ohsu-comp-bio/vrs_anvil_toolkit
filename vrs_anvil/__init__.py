@@ -285,7 +285,10 @@ def _get_metakb_models(metakb_path):
 
 
 class Manifest(BaseModel):
-    """A class to represent the manifest file."""
+    """
+    A class to represent the manifest file.
+    Defaults to the values below if not provided in the manifest.yaml
+    """
 
     cache_directory: str = "cache/"
     """Path to the cache directory, defaults to cache/ (relative to the root of the repository)"""
@@ -324,7 +327,7 @@ class Manifest(BaseModel):
     estimated_vcf_lines: Optional[int] = 4000000
     """How many lines per vcf file?  Used for progress bar"""
 
-    metakb_directory: str
+    metakb_directory: str = "metakb/"
     """Where the CDM files are located.  This is a directory containing json files"""
 
     @model_validator(mode="after")
