@@ -47,6 +47,12 @@ def testing_manifest_path(testing_manifest: Manifest, tmp_path) -> pathlib.Path:
 
 
 @pytest.fixture
+def metakb_directory(testing_manifest):
+    """Where the CDM files are located."""
+    return testing_manifest.metakb_directory
+
+
+@pytest.fixture
 def initialized_manifest(testing_manifest) -> bool:
     """state change, the manifest is initialized."""
     vrs_anvil.manifest = testing_manifest
