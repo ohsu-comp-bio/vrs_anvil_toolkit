@@ -14,7 +14,9 @@ def test_metakb_ids(metakb_directory, expected_vrs_id_count):
     """Test metakb ids."""
     vrs_ids = [_ for _ in metakb_ids(metakb_directory)]
     vrs_count = len(vrs_ids)
-    assert vrs_count >= expected_vrs_id_count, f"Not enough VRS ids found in metakb {vrs_count} {vrs_ids}"
+    assert (
+        vrs_count >= expected_vrs_id_count
+    ), f"Not enough VRS ids found in metakb {vrs_count} {vrs_ids}"
     metakb_proxy = MetaKBProxy(metakb_path=pathlib.Path(metakb_directory))
 
     for _ in vrs_ids:

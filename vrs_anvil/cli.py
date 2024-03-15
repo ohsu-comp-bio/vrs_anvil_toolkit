@@ -28,7 +28,7 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
         _log_level = logging.DEBUG
     try:
         with open(manifest, 'r') as stream:
-            manifest = Manifest.parse_obj(yaml.safe_load(stream))
+            manifest = Manifest.model_validate(yaml.safe_load(stream))
 
             # Create a rotating file handler with a max size of 10MB and keep 3 backup files
             log_path = pathlib.Path(manifest.state_directory) / "vrs_anvil.log"
@@ -66,6 +66,7 @@ def annotate_cli(ctx):
         assert 'manifest' in ctx.obj, "Manifest not found."
         manifest = ctx.obj['manifest']
         _logger.debug(f"Manifest: {ctx.obj['manifest']}")
+        _logger.warning("woah")
         click.secho("🚧  annotating variants", fg='yellow')
         metrics_file = annotate_all(manifest, max_errors=ctx.obj['max_errors'])
         click.secho(f"📊  metrics available in {metrics_file}", fg='green')

@@ -29,9 +29,9 @@ def manifest_path() -> pathlib.Path:
 @pytest.fixture
 def testing_manifest(manifest_path: pathlib.Path, tmp_path) -> Manifest:
     """Set the testing manifest for this run."""
-    with open(manifest_path, 'r') as stream:
+    with open(manifest_path, "r") as stream:
         manifest_dict = yaml.safe_load(stream)
-        for _ in ['work_directory', 'cache_directory', 'state_directory']:
+        for _ in ["work_directory", "cache_directory", "state_directory"]:
             manifest_dict[_] = str(tmp_path / manifest_dict[_])
         manifest = Manifest.parse_obj(manifest_dict)
     return manifest
@@ -40,8 +40,8 @@ def testing_manifest(manifest_path: pathlib.Path, tmp_path) -> Manifest:
 @pytest.fixture
 def testing_manifest_path(testing_manifest: Manifest, tmp_path) -> pathlib.Path:
     """Set the testing manifest for this run."""
-    _ = tmp_path / 'manifest.yml'
-    with open(_, 'w') as stream:
+    _ = tmp_path / "manifest.yml"
+    with open(_, "w") as stream:
         yaml.dump(testing_manifest.model_dump(), stream)
     return _
 
