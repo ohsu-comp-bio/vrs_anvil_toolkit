@@ -267,14 +267,15 @@ def _get_metakb_models(metakb_path):
 
     pathlib.Path(metakb_path).mkdir(exist_ok=True)
 
-    json_files = ["civic_cdm_20240103.json", "moa_cdm_20240103.json"]
+    date = "20240305"
+    json_files = [f"civic_cdm_{date}.json", f"moa_cdm_{date}.json"]
 
     for json_file in json_files:
         json_path = f"{metakb_path}/{json_file}"
 
         url = (
             "https://vicc-metakb.s3.us-east-2.amazonaws.com"
-            + f"/cdm/20240103/{json_file}.zip"
+            + f"/cdm/{date}/{json_file}.zip"
         )
         zip_path = f"{json_path}.zip"
 

@@ -12,7 +12,7 @@ snv_inputs = {
     "hgvs": "NC_000019.10:g.44908822C>T",
     "beacon": "19 : 44908822 C > T",
     "spdi": "NC_000019.10:44908821:1:T",
-    "gnomad": "19-44908822-C-T"
+    "gnomad": "19-44908822-C-T",
 }
 
 snv_output = {
@@ -21,22 +21,19 @@ snv_output = {
         "start": 44908821,
         "sequenceReference": {
             "refgetAccession": "SQ.IIB53T8CNeJJdUqzn9V_JnRtQadwWCbl",
-            "type": "SequenceReference"
+            "type": "SequenceReference",
         },
-        "type": "SequenceLocation"
+        "type": "SequenceLocation",
     },
-    "state": {
-        "sequence": "T",
-        "type": "LiteralSequenceExpression"
-    },
-    "type": "Allele"
+    "state": {"sequence": "T", "type": "LiteralSequenceExpression"},
+    "type": "Allele",
 }
 
 # https://www.ncbi.nlm.nih.gov/clinvar/variation/1373966/?new_evidence=true
 deletion_inputs = {
     "hgvs": "NC_000013.11:g.20003097del",
     "spdi": ["NC_000013.11:20003096:C:", "NC_000013.11:20003096:1:"],
-    "gnomad": "13-20003096-AC-A"
+    "gnomad": "13-20003096-AC-A",
 }
 
 deletion_output = {
@@ -45,15 +42,12 @@ deletion_output = {
         "start": 20003096,
         "sequenceReference": {
             "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
-            "type": "SequenceReference"
+            "type": "SequenceReference",
         },
-        "type": "SequenceLocation"
+        "type": "SequenceLocation",
     },
-    "state": {
-        "sequence": "",
-        "type": "LiteralSequenceExpression"
-    },
-    "type": "Allele"
+    "state": {"sequence": "", "type": "LiteralSequenceExpression"},
+    "type": "Allele",
 }
 
 gnomad_deletion_output = {
@@ -62,15 +56,12 @@ gnomad_deletion_output = {
         "start": 20003095,
         "sequenceReference": {
             "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
-            "type": "SequenceReference"
+            "type": "SequenceReference",
         },
-        "type": "SequenceLocation"
+        "type": "SequenceLocation",
     },
-    "state": {
-        "sequence": "A",
-        "type": "LiteralSequenceExpression"
-    },
-    "type": "Allele"
+    "state": {"sequence": "A", "type": "LiteralSequenceExpression"},
+    "type": "Allele",
 }
 
 deletion_output_normalized = {
@@ -79,24 +70,24 @@ deletion_output_normalized = {
         "start": 20003096,
         "sequenceReference": {
             "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
-            "type": "SequenceReference"
+            "type": "SequenceReference",
         },
-        "type": "SequenceLocation"
+        "type": "SequenceLocation",
     },
     "state": {
         "length": 0,
         "repeatSubunitLength": 1,
         "sequence": "",
-        "type": "ReferenceLengthExpression"
+        "type": "ReferenceLengthExpression",
     },
-    "type": "Allele"
+    "type": "Allele",
 }
 
 # https://www.ncbi.nlm.nih.gov/clinvar/variation/1687427/?new_evidence=true
 insertion_inputs = {
     "hgvs": "NC_000013.11:g.20003010_20003011insG",
     "spdi": ["NC_000013.11:20003010::G", "NC_000013.11:20003010:0:G"],
-    "gnomad": "13-20003010-A-AG"
+    "gnomad": "13-20003010-A-AG",
 }
 
 insertion_output = {
@@ -105,15 +96,12 @@ insertion_output = {
         "start": 20003010,
         "sequenceReference": {
             "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
-            "type": "SequenceReference"
+            "type": "SequenceReference",
         },
-        "type": "SequenceLocation"
+        "type": "SequenceLocation",
     },
-    "state": {
-        "sequence": "G",
-        "type": "LiteralSequenceExpression"
-    },
-    "type": "Allele"
+    "state": {"sequence": "G", "type": "LiteralSequenceExpression"},
+    "type": "Allele",
 }
 
 gnomad_insertion_output = {
@@ -122,22 +110,19 @@ gnomad_insertion_output = {
         "start": 20003009,
         "sequenceReference": {
             "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
-            "type": "SequenceReference"
+            "type": "SequenceReference",
         },
-        "type": "SequenceLocation"
+        "type": "SequenceLocation",
     },
-    "state": {
-        "sequence": "AG",
-        "type": "LiteralSequenceExpression"
-    },
-    "type": "Allele"
+    "state": {"sequence": "AG", "type": "LiteralSequenceExpression"},
+    "type": "Allele",
 }
 
 # https://www.ncbi.nlm.nih.gov/clinvar/variation/1264314/?new_evidence=true
 duplication_inputs = {
     "hgvs": "NC_000013.11:g.19993838_19993839dup",
     "spdi": "NC_000013.11:19993837:GT:GTGT",
-    "gnomad": "13-19993838-GT-GTGT"
+    "gnomad": "13-19993838-GT-GTGT",
 }
 
 duplication_output = {
@@ -146,15 +131,12 @@ duplication_output = {
         "start": 19993837,
         "sequenceReference": {
             "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
-            "type": "SequenceReference"
+            "type": "SequenceReference",
         },
-        "type": "SequenceLocation"
+        "type": "SequenceLocation",
     },
-    "state": {
-        "sequence": "GTGT",
-        "type": "LiteralSequenceExpression"
-    },
-    "type": "Allele"
+    "state": {"sequence": "GTGT", "type": "LiteralSequenceExpression"},
+    "type": "Allele",
 }
 
 duplication_output_normalized = {
@@ -163,60 +145,88 @@ duplication_output_normalized = {
         "start": 19993837,
         "sequenceReference": {
             "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
-            "type": "SequenceReference"
+            "type": "SequenceReference",
         },
-        "type": "SequenceLocation"
+        "type": "SequenceLocation",
     },
     "state": {
         "length": 4,
         "repeatSubunitLength": 2,
         "sequence": "GTGT",
-        "type": "ReferenceLengthExpression"
+        "type": "ReferenceLengthExpression",
     },
-    "type": "Allele"
+    "type": "Allele",
 }
 
 
-def _remove_ids(_dict):
-    """Remove the "id" key from a dictionary TODO - why is this necessary?"""
-    if "id" in _dict:
-        del _dict["id"]
-    if "location" in _dict and "id" in _dict["location"]:
-        del _dict["location"]["id"]
-    return _dict
-
-
-def test_cache(my_translator):
-    """Ensure we can get the same results from gnomad as vrs-python and that results are faster the second time."""
+def test_results(my_translator):
+    """Ensure we can get the same results from gnomad as vrs-python, ie
+    that the id and digest are computed recursively for the Allele object"""
     tlr = my_translator
     assert tlr is not None
     tlr.normalize = False
 
+    identifiers = ["id", "digest"]
+
+    inputs_dict = {
+        "snv": (snv_inputs, snv_output),
+        "deletion": (deletion_inputs, gnomad_deletion_output),
+        "insertion": (insertion_inputs, gnomad_insertion_output),
+        "duplication": (duplication_inputs, duplication_output),
+    }
+
+    for variant_type, (input, output) in inputs_dict.items():
+        gnomad_expr = input["gnomad"]
+        # allele object validation
+        allele_dict = tlr.translate_from(fmt="gnomad", var=gnomad_expr).model_dump(
+            exclude_none=True
+        )
+
+        for key in identifiers:
+            assert (
+                key in allele_dict
+            ), f"{key} not found for {variant_type} expression {gnomad_expr}"
+            del allele_dict[key]
+
+        # location object validation
+        assert "location" in allele_dict, "nested location dict not found"
+        for key in identifiers:
+            assert (
+                key in allele_dict["location"]
+            ), f"{key} not found for {variant_type} expression {gnomad_expr}"
+            del allele_dict["location"][key]
+
+        assert output == allele_dict, (
+            f"{variant_type} does not match for {gnomad_expr}: "
+            + f"\nexpected: {output}\n!==\nactual: {allele_dict}"
+        )
+
+
+def test_cache(my_translator):
+    """Ensure that results from getting allele IDs are faster the second time."""
+    tlr = my_translator
+    assert tlr is not None
+    tlr.normalize = False
+
+    all_inputs = [snv_inputs, deletion_inputs, insertion_inputs, duplication_inputs]
+
     start_time = time.time()
-
-    assert _remove_ids(tlr.translate_from(fmt="gnomad", var=snv_inputs["gnomad"]).model_dump(exclude_none=True)) == snv_output
-    assert _remove_ids(tlr.translate_from(fmt="gnomad", var=deletion_inputs["gnomad"]).model_dump(exclude_none=True)) == gnomad_deletion_output
-    assert _remove_ids(tlr.translate_from(fmt="gnomad", var=insertion_inputs["gnomad"]).model_dump(exclude_none=True)) == gnomad_insertion_output
-    assert _remove_ids(tlr.translate_from(fmt="gnomad", var=duplication_inputs["gnomad"]).model_dump(exclude_none=True)) == duplication_output
-
-    end_time = time.time()
-
-    elapsed_time = end_time - start_time
-    # print(f"Elapsed time: {elapsed_time} seconds")
+    for inputs in all_inputs:
+        tlr.translate_from(fmt="gnomad", var=inputs["gnomad"]).model_dump(
+            exclude_none=True
+        )
+    noncached_time = time.time() - start_time
 
     start_time = time.time()
+    for inputs in all_inputs:
+        tlr.translate_from(fmt="gnomad", var=inputs["gnomad"]).model_dump(
+            exclude_none=True
+        )
+    cache_time = time.time() - start_time
 
-    assert _remove_ids(tlr.translate_from(fmt="gnomad", var=snv_inputs["gnomad"]).model_dump(exclude_none=True)) == snv_output
-    assert _remove_ids(tlr.translate_from(fmt="gnomad", var=deletion_inputs["gnomad"]).model_dump(exclude_none=True)) == gnomad_deletion_output
-    assert _remove_ids(tlr.translate_from(fmt="gnomad", var=insertion_inputs["gnomad"]).model_dump(exclude_none=True)) == gnomad_insertion_output
-    assert _remove_ids(tlr.translate_from(fmt="gnomad", var=duplication_inputs["gnomad"]).model_dump(exclude_none=True)) == duplication_output
-
-    end_time = time.time()
-
-    elapsed_time2 = end_time - start_time
-    # print(f"Elapsed time: {elapsed_time2} seconds")
-
-    assert elapsed_time2 < (elapsed_time / 4), f"Cache should make things significantly faster first {elapsed_time} second {elapsed_time2}."
+    assert cache_time < (
+        noncached_time / 4
+    ), f"Cache should make things significantly faster first {noncached_time} second {cache_time}."
 
 
 @pytest.fixture()
@@ -237,7 +247,7 @@ def test_threading(threaded_translator, num_threads):
         {"fmt": "gnomad", "var": snv_inputs["gnomad"]},
         {"fmt": "gnomad", "var": deletion_inputs["gnomad"]},
         {"fmt": "gnomad", "var": insertion_inputs["gnomad"]},
-        {"fmt": "gnomad", "var": duplication_inputs["gnomad"]}
+        {"fmt": "gnomad", "var": duplication_inputs["gnomad"]},
     ]
 
     def repeat_sequence(sequence, times):
@@ -257,17 +267,25 @@ def test_threading(threaded_translator, num_threads):
     c = 0  # count of results
     _times = 2
     errors = []
-    for result_dict in tlr.threaded_translate_from(repeat_sequence(parameters, times=_times), num_threads=num_threads):
+    for result_dict in tlr.threaded_translate_from(
+        repeat_sequence(parameters, times=_times), num_threads=num_threads
+    ):
         c += 1
         validate_threaded_result(result_dict, errors, validate_passthrough=False)
-    assert c == (_times * len(parameters)), f"Expected {_times * len(parameters)} results, got {c}."
-    assert len(errors) == 0, f"num_threads {num_threads} {c} items {len(errors)} errors {errors}."
+    assert c == (
+        _times * len(parameters)
+    ), f"Expected {_times * len(parameters)} results, got {c}."
+    assert (
+        len(errors) == 0
+    ), f"num_threads {num_threads} {c} items {len(errors)} errors {errors}."
 
 
 @pytest.fixture
 def gnomad_csv() -> pathlib.Path:
     """Return a path to a gnomad csv file."""
-    _ = pathlib.Path("tests/fixtures/gnomAD_v4.0.0_ENSG00000012048_2024_03_04_18_33_26.csv")
+    _ = pathlib.Path(
+        "tests/fixtures/gnomAD_v4.0.0_ENSG00000012048_2024_03_04_18_33_26.csv"
+    )
     assert _.exists()
     return _
 
@@ -295,7 +313,9 @@ def test_gnomad(threaded_translator, gnomad_csv, num_threads):
     c = 0  # count of results
     start_time = time.time()
     errors = []
-    for result_dict in tlr.threaded_translate_from(generator=gnomad_ids(gnomad_csv), num_threads=num_threads):
+    for result_dict in tlr.threaded_translate_from(
+        generator=gnomad_ids(gnomad_csv), num_threads=num_threads
+    ):
         c += 1
         validate_threaded_result(result_dict, errors, validate_passthrough=False)
     end_time = time.time()
@@ -303,4 +323,73 @@ def test_gnomad(threaded_translator, gnomad_csv, num_threads):
     elapsed_time = end_time - start_time
 
     print(errors)
-    assert len(errors) == 0, f"num_threads {num_threads} elapsed time: {elapsed_time} seconds {c} items {len(errors)} errors {errors}."
+    assert (
+        len(errors) == 0
+    ), f"num_threads {num_threads} elapsed time: {elapsed_time} seconds {c} items {len(errors)} errors {errors}."
+
+
+{
+    "type": "Allele",
+    "location": {
+        "type": "SequenceLocation",
+        "digest": "wIlaGykfwHIpPY2Fcxtbx4TINbbODFVz",
+        "sequenceReference": {
+            "type": "SequenceReference",
+            "refgetAccession": "SQ.IIB53T8CNeJJdUqzn9V_JnRtQadwWCbl",
+        },
+        "start": 44908821,
+        "end": 44908822,
+    },
+    "state": {"type": "LiteralSequenceExpression", "sequence": "T"},
+}
+{
+    "id": "ga4gh:VA.oniij0pYTpd5J8GLcjevFlXZLBQvPkZX",
+    "type": "Allele",
+    "digest": "oniij0pYTpd5J8GLcjevFlXZLBQvPkZX",
+    "location": {
+        "id": "ga4gh:SL.eI5ABJWkbKwkphNVWVRvz69apy3lbcOD",
+        "type": "SequenceLocation",
+        "digest": "eI5ABJWkbKwkphNVWVRvz69apy3lbcOD",
+        "sequenceReference": {
+            "type": "SequenceReference",
+            "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
+        },
+        "start": 20003095,
+        "end": 20003097,
+    },
+    "state": {"type": "LiteralSequenceExpression", "sequence": "A"},
+}
+{
+    "id": "ga4gh:VA.f-shIC8omRUmtaV-N8eHaVg_d8HMMpcf",
+    "type": "Allele",
+    "digest": "f-shIC8omRUmtaV-N8eHaVg_d8HMMpcf",
+    "location": {
+        "id": "ga4gh:SL.hCz-8ZydmFSS8VmN27Gv00bmuDn7mvSs",
+        "type": "SequenceLocation",
+        "digest": "hCz-8ZydmFSS8VmN27Gv00bmuDn7mvSs",
+        "sequenceReference": {
+            "type": "SequenceReference",
+            "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
+        },
+        "start": 20003009,
+        "end": 20003010,
+    },
+    "state": {"type": "LiteralSequenceExpression", "sequence": "AG"},
+}
+{
+    "id": "ga4gh:VA.7owfTeiSqoME8zr4p6IqlAu0cNs4Mvu-",
+    "type": "Allele",
+    "digest": "7owfTeiSqoME8zr4p6IqlAu0cNs4Mvu-",
+    "location": {
+        "id": "ga4gh:SL.yCVGYQzbSLQe-GeAaHbW0dOiEGzHF3Yj",
+        "type": "SequenceLocation",
+        "digest": "yCVGYQzbSLQe-GeAaHbW0dOiEGzHF3Yj",
+        "sequenceReference": {
+            "type": "SequenceReference",
+            "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
+        },
+        "start": 19993837,
+        "end": 19993839,
+    },
+    "state": {"type": "LiteralSequenceExpression", "sequence": "GTGT"},
+}

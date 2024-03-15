@@ -46,6 +46,8 @@ In addition, this project facilitates the retrieval of evidence associated with 
 2. Install dependencies:
    a. for local use
    ```bash
+   # install postgresql@14 (required for vrs-python)
+   brew install postgresql@14
    bash scripts/setup.sh
    ```
    b. for use on Terra
