@@ -28,7 +28,7 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
         _log_level = logging.DEBUG
     try:
         with open(manifest, 'r') as stream:
-            manifest = Manifest.parse_obj(yaml.safe_load(stream))
+            manifest = Manifest.model_validate(yaml.safe_load(stream))
 
             # Create a rotating file handler with a max size of 10MB and keep 3 backup files
             log_path = pathlib.Path(manifest.state_directory) / "vrs_anvil.log"
