@@ -66,7 +66,6 @@ def annotate_cli(ctx):
         assert 'manifest' in ctx.obj, "Manifest not found."
         manifest = ctx.obj['manifest']
         _logger.debug(f"Manifest: {ctx.obj['manifest']}")
-        _logger.warning("woah")
         click.secho("🚧  annotating variants", fg='yellow')
         metrics_file = annotate_all(manifest, max_errors=ctx.obj['max_errors'])
         click.secho(f"📊  metrics available in {metrics_file}", fg='green')
