@@ -35,13 +35,10 @@ def _work_file_generator(manifest: Manifest) -> Generator[pathlib.Path, None, No
 
 def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
     """Return a gnomad expression generator for each line in the vcf."""
-    all_done = False
     total_lines = 0
     for work_file in tqdm(
         _work_file_generator(manifest), total=len(manifest.vcf_files)
     ):
-        if all_done:
-            break
         line_number = 0
         if "gz" in str(work_file):
             f = gzip.open(work_file, "rt")
@@ -55,6 +52,9 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
             metrics[key]["metakb_hits"] = 0
 
             for line in f:
+                line_number += 1
+                total_lines += 1
+
                 if line.startswith("#"):
                     continue
                 for gnomad_id in generate_gnomad_ids(
@@ -62,12 +62,8 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
                 ):
                     yield {"fmt": "gnomad", "var": gnomad_id}, work_file, line_number
 
-                line_number += 1
-                total_lines += 1
-
                 if manifest.limit and line_number > manifest.limit:
                     _logger.info(f"Limit of {manifest.limit} reached, stopping")
-                    all_done = True
                     break
 
             _logger.info(f"Setting metrics for {work_file}")
