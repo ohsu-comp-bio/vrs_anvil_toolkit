@@ -16,6 +16,20 @@ from vrs_anvil.collector import collect_manifest_urls
 
 _logger = logging.getLogger("vrs_anvil.annotator")
 
+# enums for metrics
+# TODO: do this for keys across files like "parameters" but also "fmt" and "line"
+PARAMETERS = "parameters"
+TOTAL = "total"
+STATUS = "status"
+SUCCESSES = "successes"
+ERROR = "error"
+METAKB_HITS = "metakb_hits"
+EVIDENCE = "evidence"
+START_TIME = "start_time"
+END_TIME = "end_time"
+ELAPSED_TIME = "elapsed_time"
+LINE_COUNT = "line_count"
+
 
 def recursive_defaultdict():
     """Implicitly create an entry if a key is read that doesn’t yet exist, any level deep"""
@@ -46,10 +60,10 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
             f = open(work_file, "r")
         with f:
             key = str(work_file)
-            metrics[key]["status"] = "started"
-            metrics[key]["start_time"] = time.time()
-            metrics[key]["successes"] = 0
-            metrics[key]["metakb_hits"] = 0
+            metrics[key][STATUS] = "started"
+            metrics[key][START_TIME] = time.time()
+            metrics[key][SUCCESSES] = 0
+            metrics[key][METAKB_HITS] = 0
 
             for line in f:
                 line_number += 1
@@ -67,11 +81,11 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
                     break
 
             _logger.info(f"Setting metrics for {work_file}")
-            metrics[key]["status"] = "finished"
-            metrics[key]["end_time"] = time.time()
-            metrics[key]["line_count"] = line_number
-            metrics[key]["elapsed_time"] = (
-                metrics[key]["end_time"] - metrics[key]["start_time"]
+            metrics[key][STATUS] = "finished"
+            metrics[key][END_TIME] = time.time()
+            metrics[key][LINE_COUNT] = line_number
+            metrics[key][ELAPSED_TIME] = (
+                metrics[key][END_TIME] - metrics[key][START_TIME]
             )
             # TODO - should we delete the file (if its not a symlink) after we are done with it?
 
@@ -111,7 +125,7 @@ def annotate_all(manifest: Manifest, max_errors: int) -> pathlib.Path:
     )
     _logger.info("annotate_all: completed metakb init.")
 
-    metrics["total"]["start_time"] = time.time()
+    metrics[TOTAL][START_TIME] = time.time()
     total_errors = 0
     for result_dict in _vrs_generator(manifest):
         assert result_dict is not None, "result_dict is None"
@@ -124,41 +138,44 @@ def annotate_all(manifest: Manifest, max_errors: int) -> pathlib.Path:
                 result_dict[k] is not None
             ), f"metrics tracking from caller {k} is None"
 
-        key = str(result_dict["file"])
-        if "error" in result_dict:
-            errors = metrics[key]["errors"]
-            if result_dict["error"] not in errors:
-                errors[result_dict["error"]] = 0
-            errors[result_dict["error"]] += 1
+        file_path = str(result_dict["file"])
+
+        if ERROR in result_dict:
+            errors = metrics[file_path][ERROR]
+            if result_dict[ERROR] not in errors:
+                errors[result_dict[ERROR]] = 0
+            errors[result_dict[ERROR]] += 1
             total_errors += 1
             if total_errors > max_errors:
                 break
         else:
-            result = result_dict.get("result", None)
+            allele = result_dict.get("result", None)
             assert isinstance(
-                result, Allele
-            ), f"result is not the expected Pydantic Model {type(result)} {result_dict.keys()}"
-            metrics[key]["successes"] += 1
+                allele, Allele
+            ), f"result is not the expected Pydantic Model {type(allele)} {result_dict.keys()}"
+            metrics[file_path][SUCCESSES] += 1
+
             # check metaKB cache, TODO - it would be nice if we had the metakb.study.id and added that to result_dict
-            if any([metakb_proxy.get(_) for _ in vrs_ids(result)]):
-                _logger.info(f"VRS id {result.id} found in metakb. {result_dict}")
-                metrics[key]["metakb_hits"] += 1
+            if any([metakb_proxy.get(_) for _ in vrs_ids(allele)]):
+                _logger.info(f"VRS id {allele.id} found in metakb. {result_dict}")
+
+                # TODO: once metakb api is setup, call metakb here
+                # and add actual evidence to this object as well (#3)
+                metrics[file_path][EVIDENCE][allele.id] = {
+                    PARAMETERS: result_dict[PARAMETERS]
+                }
+
+                metrics[file_path][METAKB_HITS] += 1
 
     _logger.info("annotate_all: Finished processing results.")
 
-    metrics["total"]["end_time"] = time.time()
-    metrics["total"]["elapsed_time"] = (
-        metrics["total"]["end_time"] - metrics["total"]["start_time"]
+    metrics[TOTAL][END_TIME] = time.time()
+    metrics[TOTAL][ELAPSED_TIME] = metrics[TOTAL][END_TIME] - metrics[TOTAL][START_TIME]
+    metrics[TOTAL][SUCCESSES] = sum(
+        [metrics[key].get(SUCCESSES, 0) for key in metrics.keys() if key != TOTAL]
     )
-    metrics["total"]["successes"] = sum(
-        [metrics[key].get("successes", 0) for key in metrics.keys() if key != "total"]
-    )
-    metrics["total"]["errors"] = sum(
-        [
-            sum(metrics[key]["errors"].values())
-            for key in metrics.keys()
-            if key != "total"
-        ]
+    metrics[TOTAL]["errors"] = sum(
+        [sum(metrics[key]["errors"].values()) for key in metrics.keys() if key != TOTAL]
     )
 
     _logger.info("annotate_all: Finished calculating metrics.")
@@ -172,8 +189,12 @@ def annotate_all(manifest: Manifest, max_errors: int) -> pathlib.Path:
         # clean up the recursive dict into a plain old dict so that it serialized to yaml neatly
         for k, v in metrics.items():
             metrics[k] = dict(v)
-            if "errors" in metrics[k] and k != "total":
-                metrics[k]["errors"] = dict(metrics[k]["errors"])
+            if k != TOTAL:
+                if "errors" in metrics[k]:
+                    metrics[k]["errors"] = dict(metrics[k]["errors"])
+                if EVIDENCE in metrics[k]:
+                    metrics[k][EVIDENCE] = dict(metrics[k][EVIDENCE])
+
         yaml.dump(dict(metrics), f)
 
     _logger.info("annotate_all: Finished writing metrics.")
