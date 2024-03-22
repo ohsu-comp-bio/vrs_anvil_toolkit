@@ -129,7 +129,6 @@ def test_results(my_translator):
         allele_dict = tlr.translate_from(fmt="gnomad", var=gnomad_expr).model_dump(
             exclude_none=True
         )
-        print(type(allele_dict))
 
         assert expected_allele == allele_dict, (
             f"{variant_type} does not match for {gnomad_expr}: "

@@ -165,5 +165,8 @@ cython_debug/
 # pycharm
 .idea/
 
+# vscode
+settings.json
+
 # workspace
 tmp/

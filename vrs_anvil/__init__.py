@@ -61,14 +61,14 @@ class CachingAlleleTranslator(AlleleTranslator):
     def translate_from(self, var, fmt=None, **kwargs):
         """Check and update cache"""
 
-        if self._cache:
+        if self._cache is not None:
             key = f"{var}-{fmt}"
             if key in self._cache:
                 return self._cache[key]
 
         val = super().translate_from(var, fmt=fmt, **kwargs)
 
-        if self._cache:
+        if self._cache is not None:
             self._cache[key] = val
 
         return val
