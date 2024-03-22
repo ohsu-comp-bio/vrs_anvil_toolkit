@@ -4,6 +4,10 @@ Get statistics from 1000g samples, including
   - % matches to each kb individually and metakb as a whole
   - study ids and descriptions by variant hit in metakb
 
+caveats: variant match on vrs id, not on
+  - matching zygosity
+  - germline vs somatic variant
+
 (to be run in a tmp/ directory)
 """
 
@@ -165,9 +169,10 @@ print("patients with at least one variant match:", end=" ")
 num_samples = len(vcf_reader.header.samples)
 metakb_percent = get_percent(len(sample_dict), num_samples, output=True)
 
-knowledgebases = ["MOAlmanac", "CIVIC", "ClinVar", "All Knowledgebases"]
+knowledgebases = ["MOAlmanac", "CIVIC", "All Knowledgebases"]
 
-keywords = ["moa", "civic", "clinvar"]
+keywords = ["moa", "civic"]
+
 all_percentages = []
 
 for keyword in keywords:
@@ -190,7 +195,7 @@ plt.bar(knowledgebases, all_percentages, color=mcolors.TABLEAU_COLORS)
 plt.xlabel("Knowledgebases")
 plt.ylabel("Percent of Patients with Match")
 plt.title(
-    "[chr1] Percent of GENIE Patients with At Least One Variant Match to a Knowledgebase",
+    "[chr1 to chr2] Percent of 1000G Patients with a Variant Match to a Knowledgebase",
     wrap=True,
 )
 plt.ylim(0, 120)
