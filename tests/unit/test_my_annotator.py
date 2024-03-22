@@ -58,6 +58,29 @@ gnomad_deletion_output = {
     "state": {"type": "LiteralSequenceExpression", "sequence": "A"},
 }
 
+deletion_output_normalized = {
+    "digest": "agNTkBOVZ0HQP5iWJ2GoRovSaHUCyZHN",
+    "id": "ga4gh:VA.agNTkBOVZ0HQP5iWJ2GoRovSaHUCyZHN",
+    "location": {
+        "digest": "30MgiQJ3IB1mk1wq4RyhUADF_V0vw0fD",
+        "id": "ga4gh:SL.30MgiQJ3IB1mk1wq4RyhUADF_V0vw0fD",
+        "end": 20003097,
+        "start": 20003096,
+        "sequenceReference": {
+            "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
+            "type": "SequenceReference",
+        },
+        "type": "SequenceLocation",
+    },
+    "state": {
+        "length": 0,
+        "repeatSubunitLength": 1,
+        "sequence": "",
+        "type": "ReferenceLengthExpression",
+    },
+    "type": "Allele",
+}
+
 # https://www.ncbi.nlm.nih.gov/clinvar/variation/1687427/?new_evidence=true
 insertion_inputs = {
     "hgvs": "NC_000013.11:g.20003010_20003011insG",
@@ -81,6 +104,24 @@ gnomad_insertion_output = {
         "end": 20003010,
     },
     "state": {"type": "LiteralSequenceExpression", "sequence": "AG"},
+}
+
+insertion_output_normalized = {
+    "digest": "YSFR_-q58UM-bsgyq9ScHa4hfNOWGelM",
+    "id": "ga4gh:VA.YSFR_-q58UM-bsgyq9ScHa4hfNOWGelM",
+    "location": {
+        "digest": "XHzVIQ1JEps1jDJIMGF_kn7YIcQdn5bW",
+        "id": "ga4gh:SL.XHzVIQ1JEps1jDJIMGF_kn7YIcQdn5bW",
+        "end": 20003010,
+        "start": 20003010,
+        "sequenceReference": {
+            "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
+            "type": "SequenceReference",
+        },
+        "type": "SequenceLocation",
+    },
+    "state": {"sequence": "G", "type": "LiteralSequenceExpression"},
+    "type": "Allele",
 }
 
 # https://www.ncbi.nlm.nih.gov/clinvar/variation/1264314/?new_evidence=true
@@ -108,11 +149,56 @@ duplication_output = {
     "state": {"type": "LiteralSequenceExpression", "sequence": "GTGT"},
 }
 
+duplication_output_normalized = {
+    "digest": "2Ju2sXpBNposOefRvorsmfqkAvt9tRHD",
+    "id": "ga4gh:VA.2Ju2sXpBNposOefRvorsmfqkAvt9tRHD",
+    "location": {
+        "digest": "yCVGYQzbSLQe-GeAaHbW0dOiEGzHF3Yj",
+        "id": "ga4gh:SL.yCVGYQzbSLQe-GeAaHbW0dOiEGzHF3Yj",
+        "end": 19993839,
+        "start": 19993837,
+        "sequenceReference": {
+            "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
+            "type": "SequenceReference",
+        },
+        "type": "SequenceLocation",
+    },
+    "state": {
+        "length": 4,
+        "repeatSubunitLength": 2,
+        "sequence": "GTGT",
+        "type": "ReferenceLengthExpression",
+    },
+    "type": "Allele",
+}
 
-def test_results(my_translator):
+
+def test_normalized_results(caching_translator):
+    tlr = caching_translator
+    tlr.normalize = True
+
+    assert (
+        tlr._from_gnomad(snv_inputs["gnomad"]).model_dump(exclude_none=True)
+        == snv_output
+    )
+    assert (
+        tlr._from_gnomad(deletion_inputs["gnomad"]).model_dump(exclude_none=True)
+        == deletion_output_normalized
+    )
+    assert (
+        tlr._from_gnomad(insertion_inputs["gnomad"]).model_dump(exclude_none=True)
+        == insertion_output_normalized
+    )
+    assert (
+        tlr._from_gnomad(duplication_inputs["gnomad"]).model_dump(exclude_none=True)
+        == duplication_output_normalized
+    )
+
+
+def test_results(caching_translator):
     """Ensure we can get the same results from gnomad as vrs-python, ie
     that the id and digest are computed recursively for the Allele object"""
-    tlr = my_translator
+    tlr = caching_translator
     assert tlr is not None
     tlr.normalize = False
 
@@ -136,9 +222,9 @@ def test_results(my_translator):
         )
 
 
-def test_cache(my_translator):
+def test_cache(caching_translator):
     """Ensure that results from getting allele IDs are faster the second time."""
-    tlr = my_translator
+    tlr = caching_translator
     assert tlr is not None
     tlr.normalize = False
 
@@ -260,70 +346,3 @@ def test_gnomad(threaded_translator, gnomad_csv, num_threads):
     assert (
         len(errors) == 0
     ), f"num_threads {num_threads} elapsed time: {elapsed_time} seconds {c} items {len(errors)} errors {errors}."
-
-
-{
-    "type": "Allele",
-    "location": {
-        "type": "SequenceLocation",
-        "digest": "wIlaGykfwHIpPY2Fcxtbx4TINbbODFVz",
-        "sequenceReference": {
-            "type": "SequenceReference",
-            "refgetAccession": "SQ.IIB53T8CNeJJdUqzn9V_JnRtQadwWCbl",
-        },
-        "start": 44908821,
-        "end": 44908822,
-    },
-    "state": {"type": "LiteralSequenceExpression", "sequence": "T"},
-}
-{
-    "id": "ga4gh:VA.oniij0pYTpd5J8GLcjevFlXZLBQvPkZX",
-    "type": "Allele",
-    "digest": "oniij0pYTpd5J8GLcjevFlXZLBQvPkZX",
-    "location": {
-        "id": "ga4gh:SL.eI5ABJWkbKwkphNVWVRvz69apy3lbcOD",
-        "type": "SequenceLocation",
-        "digest": "eI5ABJWkbKwkphNVWVRvz69apy3lbcOD",
-        "sequenceReference": {
-            "type": "SequenceReference",
-            "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
-        },
-        "start": 20003095,
-        "end": 20003097,
-    },
-    "state": {"type": "LiteralSequenceExpression", "sequence": "A"},
-}
-{
-    "id": "ga4gh:VA.f-shIC8omRUmtaV-N8eHaVg_d8HMMpcf",
-    "type": "Allele",
-    "digest": "f-shIC8omRUmtaV-N8eHaVg_d8HMMpcf",
-    "location": {
-        "id": "ga4gh:SL.hCz-8ZydmFSS8VmN27Gv00bmuDn7mvSs",
-        "type": "SequenceLocation",
-        "digest": "hCz-8ZydmFSS8VmN27Gv00bmuDn7mvSs",
-        "sequenceReference": {
-            "type": "SequenceReference",
-            "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
-        },
-        "start": 20003009,
-        "end": 20003010,
-    },
-    "state": {"type": "LiteralSequenceExpression", "sequence": "AG"},
-}
-{
-    "id": "ga4gh:VA.7owfTeiSqoME8zr4p6IqlAu0cNs4Mvu-",
-    "type": "Allele",
-    "digest": "7owfTeiSqoME8zr4p6IqlAu0cNs4Mvu-",
-    "location": {
-        "id": "ga4gh:SL.yCVGYQzbSLQe-GeAaHbW0dOiEGzHF3Yj",
-        "type": "SequenceLocation",
-        "digest": "yCVGYQzbSLQe-GeAaHbW0dOiEGzHF3Yj",
-        "sequenceReference": {
-            "type": "SequenceReference",
-            "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
-        },
-        "start": 19993837,
-        "end": 19993839,
-    },
-    "state": {"type": "LiteralSequenceExpression", "sequence": "GTGT"},
-}
