@@ -56,10 +56,9 @@ def create_symlink_to_work_directory(work_directory: str, vcf_file: str) -> str:
     # Construct the full path for the symlink
     symlink_path = os.path.join(work_directory, vcf_filename)
 
-    # Do not re-create it if it already exists
-    # TODO: issue #52
+    # Delete if exists (prevents cached invalid links)
     if os.path.islink(symlink_path):
-        return symlink_path
+        os.unlink(symlink_path)
 
     # Create the symlink
     vcf_file = os.path.abspath(vcf_file)
