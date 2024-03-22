@@ -66,7 +66,7 @@ def seqrepo_dir(testing_manifest):
 
 
 @pytest.fixture
-def my_translator(initialized_manifest):
+def caching_translator(initialized_manifest):
     """Return a single translator instance."""
     # relies on testing_manifest setting the vrs_anvil.manifest
     return caching_allele_translator_factory()

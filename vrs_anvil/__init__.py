@@ -177,7 +177,7 @@ def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
         for invalid_alt in invalid_alts:
             if invalid_alt in alt:
                 is_valid = False
-                _ = f"Invalid allele found: {alt}"
+                _ = f"Invalid alt found: {alt}"
                 if _ not in LOGGED_ALREADY:
                     LOGGED_ALREADY.add(_)
                     _logger.error(_)
@@ -330,6 +330,8 @@ class Manifest(BaseModel):
 
     metakb_directory: str = "metakb/"
     """Where the CDM files are located.  This is a directory containing json files"""
+
+    disable_progress_bars: Optional[bool] = False
 
     @model_validator(mode="after")
     def check_paths(self) -> "Manifest":

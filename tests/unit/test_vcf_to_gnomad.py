@@ -1,7 +1,7 @@
 from vrs_anvil import generate_gnomad_ids
 
 
-def test_generate_gnomad_ids(my_translator):
+def test_generate_gnomad_ids(caching_translator):
     input_vcf = "tests/fixtures/test_vcf_input.vcf"
     errors = []
     results = []
@@ -11,7 +11,9 @@ def test_generate_gnomad_ids(my_translator):
                 continue
             for gnomad_id in generate_gnomad_ids(line):
                 try:
-                    result = my_translator.translate_from(fmt="gnomad", var=gnomad_id)
+                    result = caching_translator.translate_from(
+                        fmt="gnomad", var=gnomad_id
+                    )
                     results.append((gnomad_id, result))
                 except Exception as e:
                     errors.append((gnomad_id, e))
