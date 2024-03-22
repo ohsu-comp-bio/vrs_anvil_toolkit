@@ -331,6 +331,8 @@ class Manifest(BaseModel):
     metakb_directory: str = "metakb/"
     """Where the CDM files are located.  This is a directory containing json files"""
 
+    disable_progress_bars: Optional[bool] = False
+
     @model_validator(mode="after")
     def check_paths(self) -> "Manifest":
         """Post init method to set the cache directory."""
