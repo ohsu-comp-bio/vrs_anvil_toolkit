@@ -16,7 +16,10 @@ import pathlib
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import os
+import numpy as np
+import pandas as pd
 import pysam
+import seaborn as sns
 import vcf
 import yaml
 
@@ -27,9 +30,10 @@ from glom import glom
 # yaml_path = "state/metrics_20240320_143108.yaml" # chr1 results from 1000g chr1...vcf.gz
 yaml_path = "state/metrics_20240321_095608.yaml"  # chr1 and 2
 figure_dir = "figures"
-figure_name = "chr1_to_chr2.png"
-save_figure = True
-show_figure = True
+variant_percentages_file_name = "chr1_to_chr2.png"
+variant_histogram_file_name = "variants_per_patient"
+save_figures = False
+show_figures = True
 
 with open(yaml_path, "r") as file:
     metrics = yaml.safe_load(file)
@@ -152,10 +156,8 @@ for file_path in metrics:
 
     # use glom to get the key
 
+
 #### Figures ####
-# average number of variants per individual
-
-
 # patients with one match total
 def get_percent(a, b, output=True):
     "pretty print percentages"
@@ -202,23 +204,31 @@ plt.ylim(0, 120)
 plt.yticks(range(0, 110, 20))
 
 # Show the plot
-# plt.grid(axis='y', linestyle='--', alpha=0.7)
 plt.tight_layout()
 os.makedirs(figure_dir, exist_ok=True)
-if save_figure:
-    plt.savefig(f"{figure_dir}/{figure_name}", dpi=300)
-if show_figure:
+if save_figures:
+    plt.savefig(f"{figure_dir}/{variant_percentages_file_name}", dpi=300)
+if show_figures:
     plt.show()
 
+# average number of variants for all samples
+num_variants_per_patient = [len(v["vrs_ids"]) for v in sample_dict.values()]
+num_variants_per_patient.extend([0 for _ in range(num_samples - len(sample_dict))])
 
-# # load the line number and
-# def get_record_at_line(vcf_filename, pos):
-#     # Open the VCF file with indexing enabled
-#     vcf_file = pysam.VariantFile(vcf_filename, 'r', index_filename=vcf_filename + '.tbi')
+NUM_VARIANTS = "num_variants"
 
-#     # Retrieve the record at the specified line number
-#     try:
-#         record = vcf_file.fetch(start=pos, end=pos)
-#         return next(record)  # Return the first record found
-#     except StopIteration:
-#         return None  # Line number not found
+plt.figure()
+df = pd.DataFrame({NUM_VARIANTS: num_variants_per_patient})
+df["percentage"] = df[NUM_VARIANTS].value_counts(normalize=True) * 100
+sns.histplot(data=df, x=NUM_VARIANTS, stat="density", bins=3, discrete=True)
+
+plt.xlabel("Number of Variants")
+plt.ylabel("Percentage of all Patients (%)")
+plt.gca().yaxis.set_major_formatter(plt.matplotlib.ticker.PercentFormatter(1))
+plt.xticks(range(min(df[NUM_VARIANTS]), max((df[NUM_VARIANTS]))))
+plt.title("Number of Variants Associated with Each Patient")
+
+if save_figures:
+    plt.savefig(f"{figure_dir}/{variant_histogram_file_name}", dpi=300)
+if show_figures:
+    plt.show()
