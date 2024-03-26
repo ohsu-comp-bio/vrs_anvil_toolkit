@@ -16,6 +16,8 @@ import requests
 
 _logger = logging.getLogger("vrs_anvil")
 LOGGED_ALREADY = set()
+METAKB_API = "http://metakb-dev-eb.us-east-2.elasticbeanstalk.com/api/v2"
+
 
 manifest: "Manifest" = None
 
@@ -352,3 +354,21 @@ class Manifest(BaseModel):
                 _logger.debug(f"Created directory {getattr(self, _)}")
 
         return self
+
+
+def query_metakb(id, log=False):
+    """Query metakb using vrs id"""
+    response = requests.get(f"{METAKB_API}/search/studies?variation={id}")
+
+    if response.status_code >= 400:
+        print(f"API error: {response.text} ({response.status_code})")
+        return
+
+    response_json = response.json()
+
+    if response_json["warnings"] == []:
+        return response_json
+
+    if log:
+        print(response_json["warnings"])
+    return

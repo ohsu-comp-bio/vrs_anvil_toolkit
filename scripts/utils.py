@@ -88,38 +88,6 @@ def unpickle(file_name):
             yield k, v
 
 
-def metakb(id, recent=True, log=False):
-    """Query metakb using vrs object"""
-
-    if recent:
-        if log:
-            print("recent elasticbeanstalk api (VRS 2.0 models)")
-        response = requests.get(
-            "http://metakb-dev-eb.us-east-2.elasticbeanstalk.com"
-            f"/api/v2/search/studies?variation={id}"
-        )
-    else:
-        if log:
-            print("old api (VRS 1.3 models)")
-        response = requests.get(
-            "https://dev-search.cancervariants.org"
-            f"/api/v2/search?variation={id}&detail=false"
-        )
-
-    if response.status_code >= 400:
-        print(f"API error: {response.text} ({response.status_code})")
-        return
-
-    response_json = response.json()
-
-    if response_json["warnings"] == []:
-        return (id, response_json)
-
-    if log:
-        print(response_json["warnings"])
-    return
-
-
 def get_num_variants(input_vcf):
     # get total num_variants
     return int(

@@ -51,7 +51,9 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
     """Return a gnomad expression generator for each line in the vcf."""
     total_lines = 0
     for work_file in tqdm(
-        _work_file_generator(manifest), total=len(manifest.vcf_files), disable=manifest.disable_progress_bars
+        _work_file_generator(manifest),
+        total=len(manifest.vcf_files),
+        disable=manifest.disable_progress_bars,
     ):
         line_number = 0
         if "gz" in str(work_file):
@@ -99,7 +101,11 @@ def _vrs_generator(manifest: Manifest) -> Generator[dict, None, None]:
     tlr = ThreadedTranslator(normalize=manifest.normalize)
     c = 0
     for result in tlr.threaded_translate_from(
-        generator=tqdm(_vcf_generator(manifest), total=manifest.estimated_vcf_lines, disable=manifest.disable_progress_bars),
+        generator=tqdm(
+            _vcf_generator(manifest),
+            total=manifest.estimated_vcf_lines,
+            disable=manifest.disable_progress_bars,
+        ),
         num_threads=manifest.num_threads,
     ):
         yield result
