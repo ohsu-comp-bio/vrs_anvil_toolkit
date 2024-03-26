@@ -26,7 +26,8 @@ from vrs_anvil import query_metakb
 
 # settings and files to load
 # yaml_path = "state/metrics_20240320_143108.yaml" # chr1 results from 1000g chr1...vcf.gz
-yaml_path = "state/metrics_20240321_095608.yaml"  # chr1 and 2
+# yaml_path = "state/metrics_20240321_095608.yaml"  # chr1 and 2
+yaml_path = "/Users/wongq/Downloads/metrics_20240326_160440.yaml"
 figure_dir = "figures"
 variant_percentages_file_name = "chr1_to_chr2.png"
 variant_histogram_file_name = "variants_per_patient"
@@ -80,13 +81,13 @@ for file_path in metrics:
 
         # should be a single record each time
         assert (
-            sum([1 for _ in vcf_reader.fetch("chr1", pos - 1, pos)]) == 1
+            sum([1 for _ in vcf_reader.fetch(chrom, pos - 1, pos)]) == 1
         ), f"more than one record found at pos {pos}"
 
-        for record_idx, record in enumerate(vcf_reader.fetch("chr1", pos - 1, pos)):
+        for record_idx, record in enumerate(vcf_reader.fetch(chrom, pos - 1, pos)):
 
             assert ref == record.ref, f"expected ref {record.ref}, got {ref}"
-            assert alt in record.alts, f"expected one of {record.alt} alts, got {alt}"
+            assert alt in record.alts, f"expected one of {record.alts} alts, got {alt}"
 
             # populate patient/sample dictionary
             id_count = 0
