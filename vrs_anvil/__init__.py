@@ -130,6 +130,7 @@ def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
 
 def params_from_vcf(path, limit=None) -> Generator[dict, None, None]:
     """Open the vcf file, skip headers, yield the first lines as gnomad-like IDs"""
+    from vrs_anvil.translator import VCFItem
     c = 0
     with open(path, "r") as f:
         for line in f:
@@ -137,7 +138,7 @@ def params_from_vcf(path, limit=None) -> Generator[dict, None, None]:
                 continue
             gnomad_ids = generate_gnomad_ids(line)
             for gnomad_id in gnomad_ids:
-                yield {"fmt": "gnomad", "var": gnomad_id}, path, c
+                yield VCFItem(fmt="gnomad", var=gnomad_id, file_name=path, line_number=c, identifier=None)  # TODO - add identifier
             c += 1
             if limit and c > limit:
                 break

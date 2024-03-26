@@ -323,8 +323,11 @@ def gnomad_ids(path, limit=None) -> Generator[tuple, None, None]:
             if skip:
                 skip = False
                 continue
-            gnomad_id = line.split(",")[0]
-            yield {"fmt": "gnomad", "var": gnomad_id}, path, c
+            _ = line.split(",")
+            gnomad_id = _[0]
+            # use allele number as the identifier
+            allele_number = _[18]
+            yield VCFItem("gnomad", gnomad_id, path, c, allele_number)
             c += 1
             if limit and c > limit:
                 break

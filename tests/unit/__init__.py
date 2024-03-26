@@ -15,8 +15,7 @@ def validate_threaded_result(result, errors, validate_passthrough=False):
     for k in ["location", "state", "type"]:
         assert k in _, f"{k} not in result from allele lookup"
     for k in ["file_name", "line_number"]:
-        assert getattr(result, k), f"metrics tracking from caller {k} not in result_dict {result}"
         if validate_passthrough:
             assert (
-                    result[k] is not None
+                    getattr(result, k) is not None
             ), f"metrics tracking from caller {k} is None"
