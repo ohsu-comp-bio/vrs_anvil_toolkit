@@ -2,7 +2,7 @@
 cache_directory: "cache/"
 
 # Number of works to use for processing, defaults to 20
-num_threads: 20
+num_threads: 4
 
 # Should we create new VCFs with annotations. FOR FUTURE USE
 # annotate_vcfs: false
