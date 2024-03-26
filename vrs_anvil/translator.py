@@ -89,23 +89,33 @@ def threaded_translator(generator: Generator[VCFItem, None, None], num_worker_th
         worker_thread.start()
 
     # Start the reader thread
+
     def reader_thread(_generator):
         for item in _generator:
             task_queue.put(PrioritizedItem(1, item))  # Default priority is 1
 
-    reader = threading.Thread(target=reader_thread, args=(generator,), daemon=True)
+    reader = threading.Thread(target=reader_thread, args=(generator, ), daemon=True)
     reader.start()
 
     # Main thread yields results
-    logged_already = False
+    logged_already = []
+    c = 0
     while True:
         try:
             prioritized_item = result_queue.get(timeout=1)  # Give the thread time to start
+            c += 1
             yield prioritized_item.item
             result_queue.task_done()
         except queue.Empty:
-            if all(not worker_thread.busy for worker_thread in worker_threads):
+            reader_started = c > 0
+            if reader_started and all(not worker_thread.busy for worker_thread in worker_threads):
+                _logger.info("All worker threads are idle, exiting.")
                 break
-            if not logged_already:
-                _logger.debug("queue.Empty - Waiting for worker threads to finish")
-                logged_already = True
+            if not reader_started:
+                msg = "queue.Empty - Waiting for reader to start"
+            else:
+                msg = "queue.Empty - Waiting for worker threads to finish"
+
+            if msg not in logged_already:
+                _logger.info(msg)
+                logged_already.append(msg)
