@@ -5,7 +5,8 @@ import pytest
 import yaml
 
 import vrs_anvil
-from vrs_anvil import caching_allele_translator_factory, ThreadedTranslator, Manifest
+from vrs_anvil.translator import ThreadedTranslator
+from vrs_anvil import caching_allele_translator_factory, Manifest
 
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.DEBUG)

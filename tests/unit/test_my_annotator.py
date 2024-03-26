@@ -5,6 +5,7 @@ from typing import Generator
 import pytest
 
 from tests.unit import validate_threaded_result
+from vrs_anvil.translator import VCFItem
 
 # see https://github.com/ga4gh/vrs-python/blob/main/tests/extras/test_allele_translator.py#L17
 
@@ -281,17 +282,20 @@ def test_threading(threaded_translator, num_threads):
         Yields:
         - Elements from the sequence in a repeated pattern.
         """
+        line_number = 1
         for _ in range(times):
-            yield from sequence
+            for _sequence in sequence:
+                yield VCFItem(**_sequence, file_name="test", line_number=line_number, identifier=None)
+                line_number += 1
 
     c = 0  # count of results
     _times = 2
     errors = []
-    for result_dict in tlr.threaded_translate_from(
+    for result in tlr.threaded_translate_from(
         repeat_sequence(parameters, times=_times), num_threads=num_threads
     ):
         c += 1
-        validate_threaded_result(result_dict, errors, validate_passthrough=False)
+        validate_threaded_result(result, errors, validate_passthrough=False)
     assert c == (
         _times * len(parameters)
     ), f"Expected {_times * len(parameters)} results, got {c}."

@@ -11,8 +11,9 @@ from ga4gh.vrs._internal.models import Allele  # noqa  F401 'Allele' private mem
 from tqdm import tqdm
 
 import vrs_anvil
-from vrs_anvil import Manifest, ThreadedTranslator, generate_gnomad_ids
+from vrs_anvil import Manifest, generate_gnomad_ids
 from vrs_anvil.collector import collect_manifest_urls
+from vrs_anvil.translator import ThreadedTranslator, VCFItem
 
 _logger = logging.getLogger("vrs_anvil.annotator")
 
@@ -76,7 +77,7 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
                 for gnomad_id in generate_gnomad_ids(
                     line, compute_for_ref=manifest.compute_for_ref
                 ):
-                    yield {"fmt": "gnomad", "var": gnomad_id}, work_file, line_number
+                    yield VCFItem(fmt="gnomad", var=gnomad_id, file_name=work_file, line_number=line_number)   # {"fmt": "gnomad", "var": gnomad_id}, work_file, line_number
 
                 if manifest.limit and line_number > manifest.limit:
                     _logger.info(f"Limit of {manifest.limit} reached, stopping")
@@ -133,42 +134,35 @@ def annotate_all(manifest: Manifest, max_errors: int) -> pathlib.Path:
 
     metrics[TOTAL][START_TIME] = time.time()
     total_errors = 0
-    for result_dict in _vrs_generator(manifest):
-        assert result_dict is not None, "result_dict is None"
-        assert isinstance(result_dict, dict), "result_dict is not a dict"
-        for k in ["file", "line"]:
-            assert (
-                k in result_dict
-            ), f"metrics tracking from caller {k} not in result_dict"
-            assert (
-                result_dict[k] is not None
-            ), f"metrics tracking from caller {k} is None"
+    for result in _vrs_generator(manifest):
+        assert result is not None, "result is None"
+        assert isinstance(result, VCFItem), "result is not a VCFItem"
 
-        file_path = str(result_dict["file"])
+        file_path = str(result.file_name)
 
-        if ERROR in result_dict:
+        if ERROR in result:
             errors = metrics[file_path][ERROR]
-            if result_dict[ERROR] not in errors:
-                errors[result_dict[ERROR]] = 0
-            errors[result_dict[ERROR]] += 1
+            if result[ERROR] not in errors:
+                errors[result[ERROR]] = 0
+            errors[result[ERROR]] += 1
             total_errors += 1
             if total_errors > max_errors:
                 break
         else:
-            allele = result_dict.get("result", None)
+            allele = result.result
             assert isinstance(
                 allele, Allele
-            ), f"result is not the expected Pydantic Model {type(allele)} {result_dict.keys()}"
+            ), f"result is not the expected Pydantic Model {type(allele)} {result.keys()}"
             metrics[file_path][SUCCESSES] += 1
 
             # check metaKB cache, TODO - it would be nice if we had the metakb.study.id and added that to result_dict
             if any([metakb_proxy.get(_) for _ in vrs_ids(allele)]):
-                _logger.info(f"VRS id {allele.id} found in metakb. {result_dict}")
+                _logger.info(f"VRS id {allele.id} found in metakb. {result}")
 
                 # TODO: once metakb api is setup, call metakb here
                 # and add actual evidence to this object as well (#3)
                 metrics[file_path][EVIDENCE][allele.id] = {
-                    PARAMETERS: result_dict[PARAMETERS]
+                    PARAMETERS: {"fmt": result.fmt, "var": result.var},
                 }
 
                 metrics[file_path][METAKB_HITS] += 1
