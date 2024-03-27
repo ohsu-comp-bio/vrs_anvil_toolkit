@@ -1,5 +1,6 @@
 import gzip
 import logging
+import os
 import pathlib
 import time
 from collections import defaultdict
@@ -121,7 +122,7 @@ def vrs_ids(allele: Allele) -> list[str]:
     return [allele.id]  # , allele.location.id, allele.location.sequence_id]
 
 
-def annotate_all(manifest: Manifest, max_errors: int) -> pathlib.Path:
+def annotate_all(manifest: Manifest, max_errors: int, timestamp_str: str = None) -> pathlib.Path:
     """Annotate all the files in the manifest. Return a file with metrics."""
 
     # set the manifest in a well known place, TODO: is this really necessary
@@ -180,10 +181,12 @@ def annotate_all(manifest: Manifest, max_errors: int) -> pathlib.Path:
 
     _logger.info("annotate_all: Finished calculating metrics.")
 
-    # Append timestamp to filename
-    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Append timestamp and pid to filename
+    if not timestamp_str:
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    pid = os.getpid()
     metrics_file = (
-        pathlib.Path(manifest.state_directory) / f"metrics_{timestamp_str}.yaml"
+        pathlib.Path(manifest.state_directory) / f"metrics_{timestamp_str}_{pid}.yaml"
     )
     with open(metrics_file, "w") as f:
         # clean up the recursive dict into a plain old dict so that it serialized to yaml neatly

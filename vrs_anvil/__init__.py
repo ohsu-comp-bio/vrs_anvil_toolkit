@@ -2,9 +2,11 @@ import json
 import logging
 import os
 import pathlib
+import subprocess
 from typing import Optional, Generator
 import zipfile
 
+import psutil
 from biocommons.seqrepo import SeqRepo
 from diskcache import Cache
 from ga4gh.vrs.dataproxy import SeqRepoDataProxy
@@ -311,3 +313,18 @@ def query_metakb(id, log=False):
     if log:
         print(response_json["warnings"])
     return
+
+
+def run_command_in_background(command) -> int:
+    """Execute the command in the background, return pid."""
+    # Detach the process from the parent process (this process)
+    process = subprocess.Popen(command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    return process.pid
+
+
+def get_process_info(pid):
+    """Return the process information for the pid."""
+    try:
+        return psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        return None
