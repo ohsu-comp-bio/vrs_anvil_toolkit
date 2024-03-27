@@ -12,7 +12,6 @@ caveats: variant match on vrs id, not on
 """
 
 import pathlib
-import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import os
 import numpy as np
@@ -22,13 +21,13 @@ import seaborn as sns
 import yaml
 
 from collections import defaultdict
-from vrs_anvil import query_metakb
+from glob import glob
+from vrs_anvil import query_metakb, truncate
 
 
 # settings and files to load
 # yaml_path = "state/metrics_20240320_143108.yaml" # chr1 results from 1000g chr1...vcf.gz
-yaml_path = "state/metrics_20240321_095608.yaml"  # chr1 and 2
-# yaml_path = "/Users/wongq/Downloads/metrics_20240326_160440.yaml"
+metrics_path = "state/metrics_20240321_095608.yaml"  # chr1 and 2
 figure_dir = "figures"
 variant_percentages_file_name = "chr1_to_chr2.png"
 variant_histogram_file_name = "chr1_to_chr2_variants_per_patient"
@@ -39,9 +38,6 @@ show_figures = False
 sns.set_theme()
 sns.set_style("whitegrid")
 
-with open(yaml_path, "r") as file:
-    metrics = yaml.safe_load(file)
-
 # data storage
 sample_dict = defaultdict(list)
 variant_types_set = set()
@@ -50,22 +46,39 @@ variant_types_set = set()
 METAKB_DIR = f"../tests/fixtures/metakb"
 json_paths = list(pathlib.Path(METAKB_DIR).glob("*.json"))
 
-for file_path in metrics:
-    if file_path == "total":
-        continue
+evidence_per_file = {}
 
-    # load original vcf
-    real_path = os.path.realpath(file_path)
-    vcf_reader = pysam.VariantFile(real_path)
+# collect all evidence from a list of metrics files
+# chrs = [str(num) for num in range(1,23)] + ["X"]
+chrs = [str(num) for num in range(1,3)]
+for c in chrs:
+    all_metrics_paths = glob(f"all-chrs/chr{c}/state/metrics*.yaml")
+    most_recent_metrics_path = all_metrics_paths[-1]
 
-    # check if metakb evidence found
-    print("from file", file_path)
-    if "evidence" not in metrics[file_path]:
-        print("no evidence (metakb hits) for this file")
-        continue
-    evidence = metrics[file_path]["evidence"]
+    with open(most_recent_metrics_path, "r") as file:
+        metrics = yaml.safe_load(file)
 
-    # collect info for each vrs allele id
+    for file_path in metrics:
+        if file_path == "total":
+            continue
+
+        # load original vcf
+        original_path = os.path.realpath(file_path)
+        vcf_reader = pysam.VariantFile(original_path)
+
+        # check if metakb evidence found
+        print("from file", truncate(original_path, 0, 46))
+        if "evidence" in metrics[file_path]:
+            print(f"{len(metrics[file_path]["evidence"])} hits found")
+            evidence_per_file.update({original_path: metrics[file_path]["evidence"]})
+        else:
+            print("no evidence from this file")
+        print()
+
+# collect info for each vrs allele id
+for file_path, evidence in evidence_per_file.items():
+    vcf_reader = pysam.VariantFile(file_path)
+
     for allele_id, allele_info in evidence.items():
 
         # extract coordinate information
@@ -78,12 +91,10 @@ for file_path in metrics:
         # get study id associated with vrs allele id
         metakb_response = query_metakb(allele_id, log=True)
         assert metakb_response is not None, f"no metakb hit for allele {allele_id}"
-        # study_ids = [(study["id"], study["qualifiers"]["alleleOrigin"]) \
-        #               for study in metakb_response["studies"]]
         study_ids = metakb_response["study_ids"]
 
-        # assert study_ids == [study["id"] for study in metakb_response["studies"]], \
-        #     "study ids in wrong order to add variant types"
+        assert study_ids == [study["id"] for study in metakb_response["studies"]], \
+            "study ids in wrong order to add variant types"
         variant_types = [study["qualifiers"]["alleleOrigin"] for study in metakb_response["studies"]]
         variant_types_set.update(variant_types)
 
@@ -120,7 +131,6 @@ for file_path in metrics:
                         sample_dict[sample]["study_ids"] = list(study_ids)
                         sample_dict[sample]["variant_types"] = list(variant_types)
 
-            print(sample_dict["NA12878"])
             print(f"\ttotal count: {id_count}\n")
 
 
