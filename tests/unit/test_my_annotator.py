@@ -258,9 +258,9 @@ def num_threads():
     return 20
 
 
-def test_threading(threaded_translator, num_threads):
+def test_threading(translator, num_threads):
     """Ensure we can feed the threaded_translate_from method a generator and get results back."""
-    tlr = threaded_translator
+    tlr = translator
     assert tlr is not None
     tlr.normalize = False
 
@@ -291,7 +291,7 @@ def test_threading(threaded_translator, num_threads):
     c = 0  # count of results
     _times = 2
     errors = []
-    for result in tlr.threaded_translate_from(
+    for result in tlr.translate_from(
         repeat_sequence(parameters, times=_times), num_threads=num_threads
     ):
         c += 1
@@ -333,14 +333,36 @@ def gnomad_ids(path, limit=None) -> Generator[tuple, None, None]:
                 break
 
 
-def test_gnomad(threaded_translator, gnomad_csv, num_threads):
+def test_gnomad(translator, gnomad_csv, num_threads):
     """We can process a set of gnomad variants."""
-    tlr = threaded_translator
+    tlr = translator
     assert tlr is not None
     c = 0  # count of results
     start_time = time.time()
     errors = []
-    for result_dict in tlr.threaded_translate_from(
+    for result_dict in tlr.translate_from(
+        generator=gnomad_ids(gnomad_csv), num_threads=num_threads
+    ):
+        c += 1
+        validate_threaded_result(result_dict, errors, validate_passthrough=False)
+    end_time = time.time()
+
+    elapsed_time = end_time - start_time
+
+    print(errors)
+    assert (
+        len(errors) == 0
+    ), f"num_threads {num_threads} elapsed time: {elapsed_time} seconds {c} items {len(errors)} errors {errors}."
+
+
+def test_gnomad_inline(translator, gnomad_csv, num_threads=1):
+    """We can process a set of gnomad variants."""
+    tlr = translator
+    assert tlr is not None
+    c = 0  # count of results
+    start_time = time.time()
+    errors = []
+    for result_dict in tlr.translate_from(
         generator=gnomad_ids(gnomad_csv), num_threads=num_threads
     ):
         c += 1

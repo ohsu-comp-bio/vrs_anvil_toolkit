@@ -67,15 +67,28 @@ class PrioritizedItem:
     item: Any = field(compare=False)
 
 
-class ThreadedTranslator(BaseModel):
-    """A class to run the translation in a threaded fashion."""
+class Translator(BaseModel):
+    """A class to run the translation in either threaded or non-threaded fashion."""
 
     normalize: Optional[bool] = False
 
-    def threaded_translate_from(
+    def translate_from(
         self, generator: Generator[VCFItem, None, None], num_threads: int = 8
     ) -> Generator[VCFItem, None, None]:
-        return threaded_translator(generator, num_threads, self.normalize)
+        if num_threads > 1:
+            return threaded_translator(generator, num_threads, self.normalize)
+        else:
+            return inline_translator(generator, self.normalize)
+
+
+def inline_translator(generator: Generator[VCFItem, None, None], normalize: bool = False) -> Generator[VCFItem, None, None]:
+    """A generator that runs the translation in a non-threaded fashion."""
+    tlr = caching_allele_translator_factory(normalize=normalize)
+    for item in generator:
+        allele = tlr.translate_from(fmt=item.fmt, var=item.var)
+        _ = item._asdict()
+        _["result"] = allele
+        yield VCFItem(**_)
 
 
 def threaded_translator(generator: Generator[VCFItem, None, None], num_worker_threads: int, normalize: bool = False) -> Generator[VCFItem, None, None]:

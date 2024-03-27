@@ -5,7 +5,7 @@ import pytest
 import yaml
 
 import vrs_anvil
-from vrs_anvil.translator import ThreadedTranslator
+from vrs_anvil.translator import Translator
 from vrs_anvil import caching_allele_translator_factory, Manifest
 
 _logger = logging.getLogger(__name__)
@@ -74,9 +74,9 @@ def caching_translator(initialized_manifest):
 
 
 @pytest.fixture
-def threaded_translator(initialized_manifest):
-    """Return a "thread manager", a pool of translator instances."""
-    return ThreadedTranslator(normalize=False)
+def translator(initialized_manifest):
+    """Return a translator instance."""
+    return Translator(normalize=False)
 
 
 @pytest.fixture()
