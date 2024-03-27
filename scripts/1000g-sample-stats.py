@@ -26,13 +26,11 @@ from vrs_anvil import query_metakb, truncate
 
 
 # settings and files to load
-# yaml_path = "state/metrics_20240320_143108.yaml" # chr1 results from 1000g chr1...vcf.gz
-metrics_path = "state/metrics_20240321_095608.yaml"  # chr1 and 2
 figure_dir = "figures"
 variant_percentages_file_name = "chr1_to_chr2.png"
 variant_histogram_file_name = "chr1_to_chr2_variants_per_patient"
-save_figures = True
-show_figures = False
+save_figures = False
+show_figures = True
 
 # seaborn styling
 sns.set_theme()
@@ -177,7 +175,6 @@ for variant_type in variants:
 
 
         percent = num_matching_samples * 100.0 / num_samples
-        print(type(percent))
         if data is None:
             data = np.array([knowledgebases[i], percent, variant_type])
         else:
@@ -188,18 +185,23 @@ assert len(data) == expected_num_rows, f"expected {expected_num_rows} rows, got 
 
 # bar plot
 df_pct = pd.DataFrame(data, columns=cols).astype(dtype={col: dtype for col, dtype in zip(cols, dtypes)})
-print(df_pct)
-print(df_pct[cols[PCT]])
-print(df_pct.dtypes)
 ax = sns.barplot(data=df_pct, x=cols[VAR], y=cols[PCT], hue=cols[KB], order=["somatic", "germline", TOTAL])
 
-# # add percent labels
-# for i, bar in enumerate(ax.patches):
-#     height = bar.get_height()
-#     label_text = f"{df_pct.iloc[cols[KB], i]:.1f}%" # Format as percentage with one decimal place
-#     label_x = bar.get_x() + bar.get_width() / 2  # Center the label horizontally
-#     label_y = bar.get_y() + height / 2         # Position slightly above the bar
-#     ax.text(label_x, label_y, label_text, ha='center', va='center')
+# add percent labels
+def add_percent_labels(df, ax, vertical_nudge, from_decimal=False):
+    multiplier = 100 if from_decimal else 1
+
+    for i, bar in enumerate(ax.patches):
+        if i >= len(df):
+            break
+
+        height = bar.get_height()
+        percent = f"{multiplier * height:.2f}"
+        x = bar.get_x() + bar.get_width() / 2
+        y = bar.get_y() + height + vertical_nudge
+        ax.text(x, y, percent, ha='center', va='center', fontsize=10)
+
+add_percent_labels(df_pct, ax, 2.5)
 
 # sns.despine(left=True)
 plt.ylim(0, 100)
@@ -214,9 +216,8 @@ plt.title(
 )
 plt.legend(loc='upper left')
 
-
 # Show the plot
-# plt.tight_layout()
+plt.tight_layout()
 os.makedirs(figure_dir, exist_ok=True)
 if save_figures:
     plt.savefig(f"{figure_dir}/{variant_percentages_file_name}", dpi=300)
@@ -227,19 +228,21 @@ if show_figures:
 num_variants_per_patient = [len(v["vrs_ids"]) for v in sample_dict.values()]
 num_variants_per_patient.extend([0 for _ in range(num_samples - len(sample_dict))])
 
+plt.figure()
 NUM_VARIANTS = "num_variants"
 
-plt.figure()
 df = pd.DataFrame({NUM_VARIANTS: num_variants_per_patient})
 df["percentage"] = df[NUM_VARIANTS].value_counts(normalize=True) * 100
-sns.histplot(data=df, x=NUM_VARIANTS, stat="density", bins=3, discrete=True)
+ax = sns.histplot(data=df, x=NUM_VARIANTS, stat="density", discrete=True)
 plt.xlabel("Number of Variants")
 plt.ylabel("Percentage of All Patients (%)")
 plt.title("Number of Variants Associated with Each Patient")
 
-plt.gca().yaxis.set_major_formatter(plt.matplotlib.ticker.PercentFormatter(1))
+add_percent_labels(df, ax, 0.01, from_decimal=True)
+
+plt.gca().yaxis.set_major_formatter(lambda x, _: f"{(x*100):.0f}")
 plt.grid(False)
-plt.xticks(range(min(df[NUM_VARIANTS]), max((df[NUM_VARIANTS]))))
+plt.xticks(range(min(df[NUM_VARIANTS]), max((df[NUM_VARIANTS])+1)))
 
 if save_figures:
     plt.savefig(f"{figure_dir}/{variant_histogram_file_name}", dpi=300)
