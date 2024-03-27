@@ -15,6 +15,7 @@ import pathlib
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import os
+import numpy as np
 import pandas as pd
 import pysam
 import seaborn as sns
@@ -26,13 +27,13 @@ from vrs_anvil import query_metakb
 
 # settings and files to load
 # yaml_path = "state/metrics_20240320_143108.yaml" # chr1 results from 1000g chr1...vcf.gz
-# yaml_path = "state/metrics_20240321_095608.yaml"  # chr1 and 2
-yaml_path = "/Users/wongq/Downloads/metrics_20240326_160440.yaml"
+yaml_path = "state/metrics_20240321_095608.yaml"  # chr1 and 2
+# yaml_path = "/Users/wongq/Downloads/metrics_20240326_160440.yaml"
 figure_dir = "figures"
 variant_percentages_file_name = "chr1_to_chr2.png"
-variant_histogram_file_name = "variants_per_patient"
-save_figures = False
-show_figures = True
+variant_histogram_file_name = "chr1_to_chr2_variants_per_patient"
+save_figures = True
+show_figures = False
 
 # seaborn styling
 sns.set_theme()
@@ -43,6 +44,7 @@ with open(yaml_path, "r") as file:
 
 # data storage
 sample_dict = defaultdict(list)
+variant_types_set = set()
 
 # get evidence key drill down for each ting
 METAKB_DIR = f"../tests/fixtures/metakb"
@@ -58,7 +60,9 @@ for file_path in metrics:
 
     # check if metakb evidence found
     print("from file", file_path)
-    assert "evidence" in metrics[file_path], "no evidence found"
+    if "evidence" not in metrics[file_path]:
+        print("no evidence (metakb hits) for this file")
+        continue
     evidence = metrics[file_path]["evidence"]
 
     # collect info for each vrs allele id
@@ -74,7 +78,14 @@ for file_path in metrics:
         # get study id associated with vrs allele id
         metakb_response = query_metakb(allele_id, log=True)
         assert metakb_response is not None, f"no metakb hit for allele {allele_id}"
+        # study_ids = [(study["id"], study["qualifiers"]["alleleOrigin"]) \
+        #               for study in metakb_response["studies"]]
         study_ids = metakb_response["study_ids"]
+
+        # assert study_ids == [study["id"] for study in metakb_response["studies"]], \
+        #     "study ids in wrong order to add variant types"
+        variant_types = [study["qualifiers"]["alleleOrigin"] for study in metakb_response["studies"]]
+        variant_types_set.update(variant_types)
 
         for study in metakb_response["studies"]:
             print(f"\t{study['type']} ({study['id']}): {study['description']}")
@@ -93,9 +104,9 @@ for file_path in metrics:
             id_count = 0
             for sample, genotype in record.samples.items():
                 gt_values = genotype["GT"]
-                if any(
-                    int(allele) > 0 for allele in gt_values
-                ):  # Check if any allele is non-zero
+
+                # Check if any allele is non-zero
+                if any(int(allele) > 0 for allele in gt_values):
                     id_count += 1
                     if sample not in sample_dict:
                         sample_dict[sample] = {}
@@ -103,10 +114,13 @@ for file_path in metrics:
                     if "vrs_ids" in sample_dict[sample]:
                         sample_dict[sample]["vrs_ids"].append(allele_id)
                         sample_dict[sample]["study_ids"].extend(study_ids)
+                        sample_dict[sample]["variant_types"].extend(variant_types)
                     else:
                         sample_dict[sample]["vrs_ids"] = [allele_id]
                         sample_dict[sample]["study_ids"] = list(study_ids)
+                        sample_dict[sample]["variant_types"] = list(variant_types)
 
+            print(sample_dict["NA12878"])
             print(f"\ttotal count: {id_count}\n")
 
 
@@ -122,40 +136,77 @@ def get_percent(a, b, output=True):
 
 print("patients with at least one variant match:", end=" ")
 num_samples = len(vcf_reader.header.samples)
-metakb_percent = get_percent(len(sample_dict), num_samples, output=True)
 
 knowledgebases = ["MOAlmanac", "CIVIC", "All Knowledgebases"]
-keywords = ["moa", "civic"]
-all_percentages = []
+kb_keywords = ["moa", "civic", ""]  # "" represents match for everything
 
-for keyword in keywords:
-    count = sum(
-        [
-            any(keyword in study_id for study_id in id_lists["study_ids"])
-            for _, id_lists in sample_dict.items()
-        ]
-    )
-    all_percentages.append(count * 100.0 / num_samples)
+KB, PCT, VAR = range(3)
+cols = ["knowledgebase", "percent", "variant_type"]
+dtypes = [str, float, str]
+
+TOTAL = "all"
+variants = sorted(list(variant_types_set)) + [TOTAL]
+
+data = None
+
+# for each variant type (germline, somatic) and kb, get count of people in
+for variant_type in variants:
+    for i, keyword in enumerate(kb_keywords):
+        num_matching_samples = 0
+
+        # increment if sample has matching variant and kb
+        for _, id_lists in sample_dict.items():
+            v_types = np.array(id_lists["variant_types"])
+
+            if variant_type == TOTAL:
+                study_ids = np.array(id_lists["study_ids"])
+            else:
+                study_ids = np.array(id_lists["study_ids"])[v_types == variant_type]
+            if any(keyword in study_id for study_id in study_ids):
+                num_matching_samples += 1
 
 
-all_percentages.append(metakb_percent)
+        percent = num_matching_samples * 100.0 / num_samples
+        print(type(percent))
+        if data is None:
+            data = np.array([knowledgebases[i], percent, variant_type])
+        else:
+            data = np.vstack([data, [knowledgebases[i], percent, variant_type]])
+
+expected_num_rows = len(knowledgebases) * len(variants)
+assert len(data) == expected_num_rows, f"expected {expected_num_rows} rows, got {len(data)}"
 
 # bar plot
-sns.barplot(x=knowledgebases, y=all_percentages, hue=knowledgebases)
-sns.despine(left=True)
+df_pct = pd.DataFrame(data, columns=cols).astype(dtype={col: dtype for col, dtype in zip(cols, dtypes)})
+print(df_pct)
+print(df_pct[cols[PCT]])
+print(df_pct.dtypes)
+ax = sns.barplot(data=df_pct, x=cols[VAR], y=cols[PCT], hue=cols[KB], order=["somatic", "germline", TOTAL])
+
+# # add percent labels
+# for i, bar in enumerate(ax.patches):
+#     height = bar.get_height()
+#     label_text = f"{df_pct.iloc[cols[KB], i]:.1f}%" # Format as percentage with one decimal place
+#     label_x = bar.get_x() + bar.get_width() / 2  # Center the label horizontally
+#     label_y = bar.get_y() + height / 2         # Position slightly above the bar
+#     ax.text(label_x, label_y, label_text, ha='center', va='center')
+
+# sns.despine(left=True)
+plt.ylim(0, 100)
+plt.yticks(np.arange(0, 101, 20))
 
 # Set labels and title
 plt.xlabel("Knowledgebases")
 plt.ylabel("Percent of Patients with Match (%)")
 plt.title(
-    "[chr1 to chr2] Percent of 1000G Patients with a Variant Match to a Knowledgebase",
+    "[chr1 to chr2] Percent of 1000G Patients with a Variant Match (n=3202)",
     wrap=True,
 )
-plt.ylim(0, 100)
-plt.yticks(range(0, 101, 20))
+plt.legend(loc='upper left')
+
 
 # Show the plot
-plt.tight_layout()
+# plt.tight_layout()
 os.makedirs(figure_dir, exist_ok=True)
 if save_figures:
     plt.savefig(f"{figure_dir}/{variant_percentages_file_name}", dpi=300)
