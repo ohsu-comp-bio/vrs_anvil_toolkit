@@ -14,7 +14,7 @@ from tqdm import tqdm
 import vrs_anvil
 from vrs_anvil import Manifest, generate_gnomad_ids
 from vrs_anvil.collector import collect_manifest_urls
-from vrs_anvil.translator import ThreadedTranslator, VCFItem
+from vrs_anvil.translator import Translator, VCFItem
 
 _logger = logging.getLogger("vrs_anvil.annotator")
 
@@ -100,7 +100,7 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
 
 def _vrs_generator(manifest: Manifest) -> Generator[dict, None, None]:
     """Return a generator for the VRS ids."""
-    tlr = ThreadedTranslator(normalize=manifest.normalize)
+    tlr = Translator(normalize=manifest.normalize)
     c = 0
     for result in tlr.threaded_translate_from(
         generator=tqdm(
