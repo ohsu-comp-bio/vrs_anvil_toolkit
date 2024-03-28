@@ -165,7 +165,7 @@ class MetaKBProxy(BaseModel):
             if not (metakb_path / "cache").is_dir():
                 reload_cache = True
             cache = Cache(directory=cache_directory("metakb"))
-            cache.stats(enable=True)
+            # cache.stats(enable=True) # drives up disk usage
             if reload_cache:
                 for _ in metakb_ids(metakb_path):
                     cache.set(_, True)
