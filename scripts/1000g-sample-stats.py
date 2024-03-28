@@ -67,7 +67,7 @@ for c in chrs:
         # check if metakb evidence found
         print("from file", truncate(original_path, 0, 46))
         if "evidence" in metrics[file_path]:
-            print(f"{len(metrics[file_path]["evidence"])} hits found")
+            print(f"{len(metrics[file_path]['evidence'])} hits found")
             evidence_per_file.update({original_path: metrics[file_path]["evidence"]})
         else:
             print("no evidence from this file")

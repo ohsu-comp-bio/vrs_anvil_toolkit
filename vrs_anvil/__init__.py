@@ -18,6 +18,8 @@ import requests
 
 _logger = logging.getLogger("vrs_anvil")
 LOGGED_ALREADY = set()
+
+# TODO: change this to prod url
 METAKB_API = "http://metakb-dev-eb.us-east-2.elasticbeanstalk.com/api/v2"
 
 
@@ -297,9 +299,9 @@ class Manifest(BaseModel):
         return self
 
 
-def query_metakb(id, log=False):
+def query_metakb(vrs_id, log=False):
     """Query metakb using vrs id"""
-    response = requests.get(f"{METAKB_API}/search/studies?variation={id}")
+    response = requests.get(f"{METAKB_API}/search/studies?variation={vrs_id}")
 
     if response.status_code >= 400:
         print(f"API error: {response.text} ({response.status_code})")
@@ -307,7 +309,7 @@ def query_metakb(id, log=False):
 
     response_json = response.json()
 
-    if response_json["warnings"] == []:
+    if not response_json["warnings"]:
         return response_json
 
     if log:
