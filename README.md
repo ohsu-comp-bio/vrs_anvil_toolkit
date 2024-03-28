@@ -57,6 +57,7 @@ In addition, this project facilitates the retrieval of evidence associated with 
    ```
 
 ### Usage
+To start, set up a manifest file ([example here](tests/fixtures/manifest.yaml)) in your working directory. We like to do with `tmp/` folder in the repo's root directory.
 
 **Manifest**
 
@@ -65,7 +66,6 @@ The configuration is controlled by a [manifest.yaml](tests/fixtures/manifest.yam
 ```yaml
 
 **CLI**
-
 ```bash
 source venv/bin/activate
 # navigate to a working directory, with your manifest.yaml file.  Add the VCF urls or file paths to your manifest
@@ -84,9 +84,13 @@ vrs_anvil ps
 **Processing VCF Files**
 TODO - update this section with vrs-python instructions...
 Replace `input.vcf` with the name of your VCF file. The processed VCF file with GA4GH VRS identifiers will be generated as `output_processed.vcf` in the same directory.
+vrs_anvil annotate
 
-**Developing in Python**
-For an example notebook on usage, see [1000g_patient_na12878_evidence.ipynb](scripts/1000g_patient_na12878_evidence.ipynb). If working on Terra, see the vrs-anvil workspace.
+**Terra**
+To use `vrs_anvil` on Terra, see the vrs-anvil workspace for more details.
+
+**VRS-Python**
+To use the GA4GH vrs-python library, see [vrs_vcf_annotator.py](scripts/vrs_vcf_annotator.py)
 
 
 ### Contributing
