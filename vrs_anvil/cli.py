@@ -156,14 +156,15 @@ def ps_cli(ctx):
                     # assert pathlib.Path(log_file).exists(), f"log file not found: {log_file}"
                     click.secho("  ✅  completed", fg="green")
                 else:
-                    if hasattr(process, 'io_counters'):
-                        io_counters = process.io_counters()
-                    else:
-                        io_counters = 'NA'
-                    if hasattr(process, 'memory_info'):
-                        memory_info = process.memory_info()
-                    else:
-                        memory_info = 'NA'
+                    io_counters = 'NA'
+                    memory_info = 'NA'
+                    try:
+                        if hasattr(process, 'io_counters'):
+                            io_counters = process.io_counters()
+                        if hasattr(process, 'memory_info'):
+                            memory_info = process.memory_info()
+                    except:
+                        pass
                     click.secho(f"  📊 {process.status()} cpu_percent: {process.cpu_percent(interval=0.1)} io_counters: {io_counters} memory_info: {memory_info}", fg="yellow")
     except Exception as exc:
         click.secho(f"{exc}", fg="red")
