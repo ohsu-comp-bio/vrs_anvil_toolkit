@@ -102,7 +102,7 @@ def _vrs_generator(manifest: Manifest) -> Generator[dict, None, None]:
     """Return a generator for the VRS ids."""
     tlr = Translator(normalize=manifest.normalize)
     c = 0
-    for result in tlr.threaded_translate_from(
+    for result in tlr.translate_from(
         generator=tqdm(
             _vcf_generator(manifest),
             total=manifest.estimated_vcf_lines,
