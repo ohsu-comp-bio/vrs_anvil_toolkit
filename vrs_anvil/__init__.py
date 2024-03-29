@@ -319,7 +319,7 @@ def run_command_in_background(command) -> int:
     """Execute the command in the background, return pid."""
     # Detach the process from the parent process (this process)
     process = subprocess.Popen(command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-    return process.pid
+    return process.pid + 1  # since we are using shell=True, the pid is the shell, not the command which is pid + 1
 
 
 def get_process_info(pid):
