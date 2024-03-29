@@ -107,7 +107,8 @@ def annotate_cli(ctx, scatter: bool):
             c = 0
             scattered_processes = []
             for _ in parent_manifest.vcf_files:
-                child_manifest = Manifest.parse_obj(parent_manifest.dict())
+                # create a new manifest for each VCF file, based on the parent manifest, clone the parent manifest
+                child_manifest = Manifest.parse_obj(parent_manifest.model_dump())
                 child_manifest.vcf_files = [_]
                 child_manifest.num_threads = 1
                 child_manifest.disable_progress_bars = True
