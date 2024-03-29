@@ -136,7 +136,11 @@ def ps_cli(ctx):
         assert "manifest" in ctx.obj, "Manifest not found."
         parent_manifest = ctx.obj["manifest"]
         scattered_processes_path = pathlib.Path(parent_manifest.work_directory)
-        scattered_processes_path = sorted(x for x in scattered_processes_path.glob("scattered_processes_*.yaml"))[-1]
+        scattered_processes_paths = sorted(x for x in scattered_processes_path.glob("scattered_processes_*.yaml"))
+        if not scattered_processes_paths:
+            click.secho(f"🚧  no scattered processes found in {parent_manifest.work_directory}/scattered_processes_*.yaml", fg="red")
+            return
+        scattered_processes_path = scattered_processes_paths[-1]
         state_dir = pathlib.Path(parent_manifest.state_directory)
         with open(scattered_processes_path, "r") as stream:
             scattered_processes = yaml.safe_load(stream)
