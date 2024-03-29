@@ -112,9 +112,9 @@ def annotate_cli(ctx, scatter: bool):
                 child_manifest.vcf_files = [_]
                 child_manifest.num_threads = 1
                 child_manifest.disable_progress_bars = True
-                child_manifest_path = pathlib.Path(child_manifest.work_directory) / f"manifest_{c}.yaml"
+                child_manifest_path = pathlib.Path(child_manifest.work_directory) / f"manifest_{timestamp_str}_{c}.yaml"
                 with open(child_manifest_path, "w") as stream:
-                    yaml.dump(child_manifest.dict(), stream)
+                    yaml.dump(child_manifest.model_dump(), stream)
                 child_pid = run_command_in_background(f'vrs_anvil --manifest {child_manifest_path} annotate')
                 click.secho(f"🚧  annotating {_} on pid {child_pid}", fg="yellow")
                 scattered_processes.append({'pid': child_pid, 'manifest': str(child_manifest_path), 'vcf': _})
