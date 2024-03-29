@@ -81,7 +81,7 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
 
 
 @cli.command("annotate")
-@click.option('--scatter', help='Start background process per url', required=False, default=False,
+@click.option('--scatter', help='Start a background process per VCF file.', required=False, default=False,
               is_flag=True, show_default=True)
 @click.pass_context
 def annotate_cli(ctx, scatter: bool):
@@ -158,13 +158,14 @@ def ps_cli(ctx):
                 else:
                     io_counters = 'NA'
                     memory_info = 'NA'
-                    try:
-                        if hasattr(process, 'io_counters'):
-                            io_counters = process.io_counters()
-                        if hasattr(process, 'memory_info'):
-                            memory_info = process.memory_info()
-                    except:
-                        pass
+                    if process.status() == 'running':
+                        try:
+                            if hasattr(process, 'io_counters'):
+                                io_counters = process.io_counters()
+                            if hasattr(process, 'memory_info'):
+                                memory_info = process.memory_info()
+                        except Exception as exc:
+                            _logger.info(f"could not get io_counters/memory_info pid: {_['pid']} error:{exc}")
                     click.secho(f"  📊 {process.status()} cpu_percent: {process.cpu_percent(interval=0.1)} io_counters: {io_counters} memory_info: {memory_info}", fg="yellow")
     except Exception as exc:
         click.secho(f"{exc}", fg="red")
