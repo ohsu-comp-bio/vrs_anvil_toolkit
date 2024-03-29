@@ -170,7 +170,7 @@ def ps_cli(ctx):
                                 memory_info = process.memory_info()
                         except Exception as exc:
                             _logger.info(f"could not get io_counters/memory_info pid: {_['pid']} error:{exc}")
-                    click.secho(f"  📊 {process.status()} cpu_percent: {process.cpu_percent(interval=0.1)} io_counters: {io_counters} memory_info: {memory_info}", fg="yellow")
+                    click.secho(f"  📊 {process.status()} cpu_percent: {process.cpu_percent(interval=0.1)}%, io_counters: {io_counters}, memory_info: {memory_info}", fg="yellow")
     except Exception as exc:
         click.secho(f"{exc}", fg="red")
         _logger.exception(exc)
