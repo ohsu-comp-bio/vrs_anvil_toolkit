@@ -318,8 +318,10 @@ def query_metakb(id, log=False):
 def run_command_in_background(command) -> int:
     """Execute the command in the background, return pid."""
     # Detach the process from the parent process (this process)
-    process = subprocess.Popen(command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-    return process.pid + 1  # since we are using shell=True, the pid is the shell, not the command which is pid + 1
+    if not isinstance(command, list):
+        command = command.split()
+    process = subprocess.Popen(command, shell=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return process.pid
 
 
 def get_process_info(pid):
