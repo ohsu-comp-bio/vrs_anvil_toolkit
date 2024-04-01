@@ -110,6 +110,7 @@ def annotate_cli(ctx, scatter: bool):
             parent_manifest = ctx.obj["manifest"]
             c = 0
             scattered_processes = []
+            child_processes = []
             for _ in parent_manifest.vcf_files:
                 # create a new manifest for each VCF file, based on the parent manifest, clone the parent manifest
                 child_manifest = parent_manifest.copy(deep=True)
@@ -119,15 +120,20 @@ def annotate_cli(ctx, scatter: bool):
                 child_manifest_path = pathlib.Path(child_manifest.work_directory) / f"manifest_{timestamp_str}_{c}.yaml"
                 with open(child_manifest_path, "w") as stream:
                     yaml.dump(child_manifest.model_dump(), stream)
-                child_pid = run_command_in_background(f'vrs_anvil --manifest {child_manifest_path} annotate')
-                click.secho(f"🚧  annotating {_} on pid {child_pid}", fg="yellow")
-                scattered_processes.append({'pid': child_pid, 'manifest': str(child_manifest_path), 'vcf': _})
+                child_process = run_command_in_background(f'vrs_anvil --manifest {child_manifest_path} annotate')
+                click.secho(f"🚧  annotating {_} on pid {child_process.pid}", fg="yellow")
+                scattered_processes.append({'pid': child_process.pid, 'manifest': str(child_manifest_path), 'vcf': _})
+                child_processes.append(child_process)
                 c += 1
             scattered_processes_path = pathlib.Path(parent_manifest.work_directory) / f"scattered_processes_{timestamp_str}.yaml"
             scattered_processes = {'parent_pid': os.getpid(), 'processes': scattered_processes}
             with open(scattered_processes_path, "w") as stream:
                 yaml.dump(scattered_processes, stream)
             click.secho(f"📊 scattered processes available in {scattered_processes_path}", fg="green")
+            click.secho("🕒 waiting for processes to complete", fg="yellow")
+            for _ in child_processes:
+                _.wait()
+
         except Exception as exc:
             click.secho(f"{exc}", fg="red")
             _logger.exception(exc)

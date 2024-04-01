@@ -3,7 +3,7 @@ import logging
 import os
 import pathlib
 import subprocess
-from typing import Optional, Generator
+from typing import Optional, Generator, Any
 import zipfile
 
 import psutil
@@ -315,13 +315,12 @@ def query_metakb(id, log=False):
     return
 
 
-def run_command_in_background(command) -> int:
+def run_command_in_background(command) -> Any:
     """Execute the command in the background, return pid."""
     # Detach the process from the parent process (this process)
     if not isinstance(command, list):
         command = command.split()
-    process = subprocess.Popen(command, shell=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return process.pid
+    return subprocess.Popen(command, shell=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def get_process_info(pid):
