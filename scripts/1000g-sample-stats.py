@@ -11,6 +11,7 @@ caveats: variant match on vrs id, not on
 (to be run in a tmp/ directory)
 """
 
+import json
 import pathlib
 import matplotlib.pyplot as plt
 import os
@@ -22,8 +23,11 @@ import yaml
 
 from collections import defaultdict
 from glob import glob
-from vrs_anvil import query_metakb, truncate
+from vrs_anvil import query_metakb
 
+# grabs all metrics files from this directory
+metrics_dir = "state/chr1_and_2"
+# metrics_path = "state/chr1" # chr1 results from 1000g chr1...vcf.gz
 
 # settings and files to load
 figure_dir = "figures"
@@ -32,9 +36,20 @@ variant_histogram_file_name = "chr1_to_chr2_variants_per_patient"
 save_figures = False
 show_figures = True
 
+# cohort allele frequency info
+caf_label_name = "vrs-python"
+caf_label_version = "2.0.0-a5"
+caf_dicts = []
+
 # seaborn styling
 sns.set_theme()
 sns.set_style("whitegrid")
+
+# helper function
+def truncate(s, first_few, last_few):
+    "truncate string printing only first_few and last_few characters"
+    return f"{s[:first_few]}...{s[-last_few:]}"
+
 
 # data storage
 sample_dict = defaultdict(list)
@@ -50,7 +65,7 @@ evidence_per_file = {}
 # chrs = [str(num) for num in range(1,23)] + ["X"]
 chrs = [str(num) for num in range(1, 3)]
 for c in chrs:
-    all_metrics_paths = glob(f"all-chrs/chr{c}/state/metrics*.yaml")
+    all_metrics_paths = glob(f"{metrics_dir}/metrics*.yaml")
     most_recent_metrics_path = all_metrics_paths[-1]
 
     with open(most_recent_metrics_path, "r") as file:
@@ -63,6 +78,9 @@ for c in chrs:
         # load original vcf
         original_path = os.path.realpath(file_path)
         vcf_reader = pysam.VariantFile(original_path)
+        num_samples = len(vcf_reader.header.samples)
+        assert num_samples == 3202, \
+            f"expected 3202 samples for {file_path}, got {num_samples}"
 
         # check if metakb evidence found
         print("from file", truncate(original_path, 0, 46))
@@ -93,6 +111,7 @@ for file_path, evidence in evidence_per_file.items():
         if metakb_response is None:
             print(f"no metakb hit for allele {allele_id}\n")
             continue
+
         study_ids = metakb_response["study_ids"]
 
         assert study_ids == [
@@ -139,6 +158,44 @@ for file_path, evidence in evidence_per_file.items():
                         sample_dict[sample]["variant_types"] = list(variant_types)
 
             print(f"\ttotal count: {id_count}\n")
+
+            # Create cohort allele frequency objects
+        # get counts
+        num_patients_w_allele = id_count
+        allele_freq = num_patients_w_allele*1.0/num_samples
+
+        # create caf dict
+        # TODO: locusAlleleCount: The total number of alleles observed at
+        # that specific gene locus in the cohort (including the focus allele
+        # and any alternate alleles)
+
+        caf_dict = {
+            "id": allele_id,
+            "type": "CohortAlleleFrequency",
+            "label": f"Cohort Allele Frequency for {allele_id} ({gnomad_expr})",
+            "derivedFrom": {
+                "id": f"AnVIL_1000G_PRIMED-data-model",
+                "type": "DataSet",
+                "label": f"AnVIL 1000G PRIMED Data Model",
+                "version": "Last Updated 3/12/2024",
+            },
+            "focusAllele": {
+                "oneOf": [allele_id],
+            },
+            "focusAlleleCount": num_patients_w_allele,
+            "locusAlleleCount": num_samples,
+            "alleleFrequency": allele_freq,
+            "cohort": {
+                "id": "all_3202_samples",
+                "label": "High-coverage sequencing of 3202 samples",
+            }
+        }
+        caf_dicts.append(caf_dict)
+
+
+print("Cohort Allele Frequency Objects:")
+for caf_dict in caf_dicts:
+    print(json.dumps(caf_dict, indent=2), "\n")
 
 
 #### Figures ####
