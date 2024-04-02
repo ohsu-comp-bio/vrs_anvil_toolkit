@@ -102,9 +102,6 @@ def annotate_cli(ctx, scatter: bool):
             _logger.exception(exc)
     else:
         try:
-            # ignore child processes, we won't wait for them
-            import signal
-            signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
             assert "manifest" in ctx.obj, "Manifest not found."
             parent_manifest = ctx.obj["manifest"]
