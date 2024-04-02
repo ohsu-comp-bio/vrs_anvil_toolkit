@@ -128,8 +128,15 @@ def annotate_cli(ctx, scatter: bool):
                 yaml.dump(scattered_processes, stream)
             click.secho(f"📊 scattered processes available in {scattered_processes_path}", fg="green")
             click.secho("🕒 waiting for processes to complete", fg="yellow")
-            for _ in child_processes:
-                _.wait()
+            try:
+                for _ in child_processes:
+                    _.wait()
+            except KeyboardInterrupt:
+                click.secho("🚨  caught KeyboardInterrupt, terminating child processes", fg="red")
+                for _ in child_processes:
+                    _.terminate()
+                for _ in child_processes:
+                    _.wait()
 
         except Exception as exc:
             click.secho(f"{exc}", fg="red")
