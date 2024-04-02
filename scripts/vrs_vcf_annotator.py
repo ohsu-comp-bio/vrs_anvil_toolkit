@@ -4,8 +4,8 @@ from vrs_anvil import seqrepo_dir
 
 SEQREPO_DIR = seqrepo_dir()
 input_vcf = "tests/fixtures/1kGP.chr1.1000.vcf"
-stem = input_vcf.replace(".vcf", "")
-output_pkl = f"{stem}-test-vrs-objects.pkl"
+input_vcf_path_stem = input_vcf.replace(".vcf", "")
+output_pkl = f"{input_vcf_path_stem}-test-vrs-objects.pkl"
 
 output_vcf = None
 require_validation = True

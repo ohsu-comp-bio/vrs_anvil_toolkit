@@ -78,7 +78,12 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
                 for gnomad_id in generate_gnomad_ids(
                     line, compute_for_ref=manifest.compute_for_ref
                 ):
-                    yield VCFItem(fmt="gnomad", var=gnomad_id, file_name=work_file, line_number=line_number)   # {"fmt": "gnomad", "var": gnomad_id}, work_file, line_number
+                    yield VCFItem(
+                        fmt="gnomad",
+                        var=gnomad_id,
+                        file_name=work_file,
+                        line_number=line_number,
+                    )  # {"fmt": "gnomad", "var": gnomad_id}, work_file, line_number
 
                 if manifest.limit and line_number > manifest.limit:
                     _logger.info(f"Limit of {manifest.limit} reached, stopping")
@@ -122,7 +127,9 @@ def vrs_ids(allele: Allele) -> list[str]:
     return [allele.id]  # , allele.location.id, allele.location.sequence_id]
 
 
-def annotate_all(manifest: Manifest, max_errors: int, timestamp_str: str = None) -> pathlib.Path:
+def annotate_all(
+    manifest: Manifest, max_errors: int, timestamp_str: str = None
+) -> pathlib.Path:
     """Annotate all the files in the manifest. Return a file with metrics."""
 
     # set the manifest in a well known place, TODO: is this really necessary
