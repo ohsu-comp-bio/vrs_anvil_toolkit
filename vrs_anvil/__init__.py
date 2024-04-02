@@ -18,9 +18,7 @@ import requests
 
 _logger = logging.getLogger("vrs_anvil")
 LOGGED_ALREADY = set()
-
-# TODO: change this to prod url
-METAKB_API = "http://metakb-dev-eb.us-east-2.elasticbeanstalk.com/api/v2"
+METAKB_API = "https://dev-search.cancervariants.org/api/v2"
 
 
 manifest: "Manifest" = None
