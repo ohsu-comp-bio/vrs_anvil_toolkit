@@ -5,6 +5,7 @@ from typing import Generator
 import pytest
 
 from tests.unit import validate_threaded_result
+from vrs_anvil.translator import VCFItem
 
 # see https://github.com/ga4gh/vrs-python/blob/main/tests/extras/test_allele_translator.py#L17
 
@@ -257,9 +258,9 @@ def num_threads():
     return 20
 
 
-def test_threading(threaded_translator, num_threads):
+def test_threading(translator, num_threads):
     """Ensure we can feed the threaded_translate_from method a generator and get results back."""
-    tlr = threaded_translator
+    tlr = translator
     assert tlr is not None
     tlr.normalize = False
 
@@ -281,17 +282,20 @@ def test_threading(threaded_translator, num_threads):
         Yields:
         - Elements from the sequence in a repeated pattern.
         """
+        line_number = 1
         for _ in range(times):
-            yield from sequence
+            for _sequence in sequence:
+                yield VCFItem(**_sequence, file_name="test", line_number=line_number, identifier=None)
+                line_number += 1
 
     c = 0  # count of results
     _times = 2
     errors = []
-    for result_dict in tlr.threaded_translate_from(
+    for result in tlr.translate_from(
         repeat_sequence(parameters, times=_times), num_threads=num_threads
     ):
         c += 1
-        validate_threaded_result(result_dict, errors, validate_passthrough=False)
+        validate_threaded_result(result, errors, validate_passthrough=False)
     assert c == (
         _times * len(parameters)
     ), f"Expected {_times * len(parameters)} results, got {c}."
@@ -319,21 +323,46 @@ def gnomad_ids(path, limit=None) -> Generator[tuple, None, None]:
             if skip:
                 skip = False
                 continue
-            gnomad_id = line.split(",")[0]
-            yield {"fmt": "gnomad", "var": gnomad_id}, path, c
+            _ = line.split(",")
+            gnomad_id = _[0]
+            # use allele number as the identifier
+            allele_number = _[18]
+            yield VCFItem("gnomad", gnomad_id, path, c, allele_number)
             c += 1
             if limit and c > limit:
                 break
 
 
-def test_gnomad(threaded_translator, gnomad_csv, num_threads):
+def test_gnomad(translator, gnomad_csv, num_threads):
     """We can process a set of gnomad variants."""
-    tlr = threaded_translator
+    tlr = translator
     assert tlr is not None
     c = 0  # count of results
     start_time = time.time()
     errors = []
-    for result_dict in tlr.threaded_translate_from(
+    for result_dict in tlr.translate_from(
+        generator=gnomad_ids(gnomad_csv), num_threads=num_threads
+    ):
+        c += 1
+        validate_threaded_result(result_dict, errors, validate_passthrough=False)
+    end_time = time.time()
+
+    elapsed_time = end_time - start_time
+
+    print(errors)
+    assert (
+        len(errors) == 0
+    ), f"num_threads {num_threads} elapsed time: {elapsed_time} seconds {c} items {len(errors)} errors {errors}."
+
+
+def test_gnomad_inline(translator, gnomad_csv, num_threads=1):
+    """We can process a set of gnomad variants."""
+    tlr = translator
+    assert tlr is not None
+    c = 0  # count of results
+    start_time = time.time()
+    errors = []
+    for result_dict in tlr.translate_from(
         generator=gnomad_ids(gnomad_csv), num_threads=num_threads
     ):
         c += 1

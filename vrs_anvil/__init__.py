@@ -2,10 +2,11 @@ import json
 import logging
 import os
 import pathlib
-import traceback
-from typing import Optional, Generator
+import subprocess
+from typing import Optional, Generator, Any
 import zipfile
 
+import psutil
 from biocommons.seqrepo import SeqRepo
 from diskcache import Cache
 from ga4gh.vrs.dataproxy import SeqRepoDataProxy
@@ -13,6 +14,7 @@ from ga4gh.vrs.extras.translator import AlleleTranslator
 from glom import glom
 from pydantic import BaseModel, model_validator
 import requests
+
 
 _logger = logging.getLogger("vrs_anvil")
 LOGGED_ALREADY = set()
@@ -52,7 +54,7 @@ class CachingAlleleTranslator(AlleleTranslator):
         super().__init__(data_proxy)
         self.normalize = normalize
         self._cache = None
-        if manifest.cache_enabled:
+        if manifest and manifest.cache_enabled:
             self._cache = Cache(
                 directory=cache_directory("allele_translator"),
                 size_limit=cache_size_limit,
@@ -81,77 +83,15 @@ def caching_allele_translator_factory(
 ):
     """Return a CachingAlleleTranslator instance with local seqrepo"""
     if not seqrepo_directory:
-        seqrepo_directory = manifest.seqrepo_directory
+        if manifest and manifest.seqrepo_directory:
+            seqrepo_directory = manifest.seqrepo_directory
+        else:
+            seqrepo_directory = seqrepo_dir()
     dp = SeqRepoDataProxy(SeqRepo(seqrepo_directory))
     assert dp is not None, "SeqRepoDataProxy is None"
     translator = CachingAlleleTranslator(dp)
     translator.normalize = normalize
     return translator
-
-
-class ThreadedTranslator(BaseModel):
-    """A class to run the translation in a threaded fashion."""
-
-    _thread_resources: dict = {}
-    normalize: Optional[bool] = False
-
-    def threaded_translate_from(
-        self, generator, num_threads=8
-    ) -> Generator[dict, None, None]:
-        """
-        Process a generator using multithreading and yield results as they occur.
-
-        Args:
-        - generator: The generator to be processed.
-        - func: The function to be applied to each element of the generator.
-        - num_threads: Number of threads to use for processing.
-
-        Yields:
-        - Results from applying the function to each element of the generator.
-        """
-
-        translator = caching_allele_translator_factory(normalize=self.normalize)
-
-        def _ensure_tuple(item):
-            """Ensure that the item is a tuple (item, file, line)."""
-            if not isinstance(item, tuple):
-                return item, None, None
-            return item
-
-        def _process_item(item):
-            """Process an item from the generator.
-            An item is a tuple:
-            - 0: the dictionary with the fmt and var keys
-            - 1: the file path of the vcf (or other source) (optional)
-            - 2: the line number in the vcf (optional)
-            """
-            nonlocal translator
-            try:
-                result_dict = {"parameters": item[0], "file": None, "line": None}
-                if len(item) > 1:
-                    result_dict["file"] = item[1]
-                if len(item) > 2:
-                    result_dict["line"] = item[2]
-                result = translator.translate_from(**item[0])
-                # result = {'location': {}, 'state': {}, 'type': {}}  # TESTING dummy results:
-                result_dict["result"] = result
-            except Exception as e:
-                result_dict["error"] = str(e)
-                result_dict["stack_trace"] = traceback.format_exc()
-                _logger.warning(result_dict)
-
-            return result_dict
-
-        # main ...
-        c = 0
-
-        for _ in generator:
-            yield _process_item(_ensure_tuple(_))
-            c += 1
-
-        del translator
-
-        _logger.info(f"threaded_translate_from: Finished processing {c} items.")
 
 
 def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
@@ -192,6 +132,7 @@ def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
 
 def params_from_vcf(path, limit=None) -> Generator[dict, None, None]:
     """Open the vcf file, skip headers, yield the first lines as gnomad-like IDs"""
+    from vrs_anvil.translator import VCFItem
     c = 0
     with open(path, "r") as f:
         for line in f:
@@ -199,7 +140,7 @@ def params_from_vcf(path, limit=None) -> Generator[dict, None, None]:
                 continue
             gnomad_ids = generate_gnomad_ids(line)
             for gnomad_id in gnomad_ids:
-                yield {"fmt": "gnomad", "var": gnomad_id}, path, c
+                yield VCFItem(fmt="gnomad", var=gnomad_id, file_name=path, line_number=c, identifier=None)  # TODO - add identifier
             c += 1
             if limit and c > limit:
                 break
@@ -224,7 +165,7 @@ class MetaKBProxy(BaseModel):
             if not (metakb_path / "cache").is_dir():
                 reload_cache = True
             cache = Cache(directory=cache_directory("metakb"))
-            cache.stats(enable=True)
+            # cache.stats(enable=True) # drives up disk usage
             if reload_cache:
                 for _ in metakb_ids(metakb_path):
                     cache.set(_, True)
@@ -372,3 +313,19 @@ def query_metakb(id, log=False):
     if log:
         print(response_json["warnings"])
     return
+
+
+def run_command_in_background(command) -> Any:
+    """Execute the command in the background, return pid."""
+    # Detach the process from the parent process (this process)
+    if not isinstance(command, list):
+        command = command.split()
+    return subprocess.Popen(command, shell=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def get_process_info(pid):
+    """Return the process information for the pid."""
+    try:
+        return psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        return None

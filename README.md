@@ -58,13 +58,31 @@ In addition, this project facilitates the retrieval of evidence associated with 
 
 ### Usage
 
+**Manifest**
+
+The configuration is controlled by a [manifest.yaml](tests/fixtures/manifest.yaml) file.  The manifest file specifies the input VCF file(s), the output directory, and other parameters.
+
+```yaml
+
 **CLI**
 
 ```bash
 source venv/bin/activate
-vrs_anvil input.vcf
+# navigate to a working directory, with your manifest.yaml file.  Add the VCF urls or file paths to your manifest
+
+# run the vrs_anvil command in the fore ground
+vrs_anvil annotate
+
+# run the vrs_anvil command in parallel, one process per VCF file
+vrs_anvil annotate --scatter
+# get the status of the scatter processes
+vrs_anvil ps
+
+
 ```
 
+**Processing VCF Files**
+TODO - update this section with vrs-python instructions...
 Replace `input.vcf` with the name of your VCF file. The processed VCF file with GA4GH VRS identifiers will be generated as `output_processed.vcf` in the same directory.
 
 **Developing in Python**
