@@ -24,75 +24,110 @@ import yaml
 from collections import defaultdict
 from glob import glob
 from vrs_anvil import query_metakb
+from vrs_anvil.annotator import MATCHES, TOTAL, VRS_OBJECT
 
 # grabs all metrics files from this directory
-metrics_dir = "state/chr1_and_2"
-# metrics_path = "state/chr1" # chr1 results from 1000g chr1...vcf.gz
+# metrics_dir = "state/chr1_and_2"
+# metrics_dir = "state/chr1" # chr1 results from 1000g chr1...vcf.gz
+metrics_dir = "state/chr1_new"
 
 # settings and files to load
 figure_dir = "figures"
-variant_percentages_file_name = "chr1_to_chr2.png"
-variant_histogram_file_name = "chr1_to_chr2_variants_per_patient"
+variant_percentages_file_name = "chr1.png"
+variant_histogram_file_name = "chr1_variants_per_patient"
 save_figures = False
 show_figures = True
 
 # cohort allele frequency info
-caf_label_name = "vrs-python"
-caf_label_version = "2.0.0-a5"
 caf_dicts = []
 
 # seaborn styling
 sns.set_theme()
 sns.set_style("whitegrid")
 
-# helper function
+
+# helper functions
 def truncate(s, first_few, last_few):
     "truncate string printing only first_few and last_few characters"
     return f"{s[:first_few]}...{s[-last_few:]}"
 
 
+def create_caf_dict(
+    allele_id,
+    gnomad_expression,
+    focus_allele,
+    focus_allele_count,
+    locus_allele_count,
+    ancillary_results=None,
+):
+    allele_frequency = focus_allele_count * 1.0 / locus_allele_count
+
+    caf_dict = {
+        "id": allele_id,
+        "type": "CohortAlleleFrequency",
+        "label": f"Overall Cohort Allele Frequency for {allele_id} ({gnomad_expression})",
+        "derivedFrom": {
+            "id": f"AnVIL_1000G_PRIMED-data-model",
+            "type": "DataSet",
+            "label": f"AnVIL 1000G PRIMED Data Model",
+            "version": "Last Updated 3/12/2024",
+        },
+        "focusAllele": focus_allele,
+        "focusAlleleCount": focus_allele_count,
+        "locusAlleleCount": locus_allele_count,
+        "alleleFrequency": allele_frequency,
+        "cohort": {
+            "id": "all_3202_samples",
+            "label": "High-coverage sequencing of 3202 samples",
+        },
+    }
+
+    if ancillary_results is not None:
+        caf_dict["ancillaryResults"] = metakb_response
+
+    return caf_dict
+
+
 # data storage
-sample_dict = defaultdict(list)
+sample_evidence_dict = defaultdict(list)
 variant_types_set = set()
+matches_per_file = {}
 
 # get evidence key drill down for each ting
 METAKB_DIR = f"../tests/fixtures/metakb"
 json_paths = list(pathlib.Path(METAKB_DIR).glob("*.json"))
 
-evidence_per_file = {}
 
-# collect all evidence from a list of metrics files
-# chrs = [str(num) for num in range(1,23)] + ["X"]
-chrs = [str(num) for num in range(1, 3)]
-for c in chrs:
-    all_metrics_paths = glob(f"{metrics_dir}/metrics*.yaml")
-    most_recent_metrics_path = all_metrics_paths[-1]
+# collect all evidence from a list of metrics files in a directory
+all_metrics_paths = glob(f"{metrics_dir}/metrics*.yaml")
 
-    with open(most_recent_metrics_path, "r") as file:
+for metrics_path in all_metrics_paths:
+    with open(metrics_path, "r") as file:
         metrics = yaml.safe_load(file)
 
     for file_path in metrics:
-        if file_path == "total":
+        if file_path == TOTAL:
             continue
 
         # load original vcf
         original_path = os.path.realpath(file_path)
         vcf_reader = pysam.VariantFile(original_path)
         num_samples = len(vcf_reader.header.samples)
-        assert num_samples == 3202, \
-            f"expected 3202 samples for {file_path}, got {num_samples}"
+        assert (
+            num_samples == 3202
+        ), f"expected 3202 samples for {file_path}, got {num_samples}"
 
-        # check if metakb evidence found
+        # check if matches to metakb cache found
         print("from file", truncate(original_path, 0, 46))
-        if "evidence" in metrics[file_path]:
-            print(f"{len(metrics[file_path]['evidence'])} hits found")
-            evidence_per_file.update({original_path: metrics[file_path]["evidence"]})
+        if MATCHES in metrics[file_path]:
+            print(f"{len(metrics[file_path][MATCHES])} hits found")
+            matches_per_file.update({original_path: metrics[file_path][MATCHES]})
         else:
             print("no evidence from this file")
         print()
 
 # get study info (id: description) for each variant
-for file_path, evidence in evidence_per_file.items():
+for file_path, evidence in matches_per_file.items():
     vcf_reader = pysam.VariantFile(file_path)
 
     print(truncate(file_path, 0, 47))
@@ -110,92 +145,100 @@ for file_path, evidence in evidence_per_file.items():
         metakb_response = query_metakb(allele_id, log=True)
         if metakb_response is None:
             print(f"no metakb hit for allele {allele_id}\n")
-            continue
+        else:
+            study_ids = metakb_response["study_ids"]
 
-        study_ids = metakb_response["study_ids"]
+            assert study_ids == [
+                study["id"] for study in metakb_response["studies"]
+            ], "study ids in wrong order to add variant types"
+            variant_types = [
+                study["qualifiers"]["alleleOrigin"]
+                for study in metakb_response["studies"]
+            ]
+            variant_types_set.update(variant_types)
 
-        assert study_ids == [
-            study["id"] for study in metakb_response["studies"]
-        ], "study ids in wrong order to add variant types"
-        variant_types = [
-            study["qualifiers"]["alleleOrigin"] for study in metakb_response["studies"]
-        ]
-        variant_types_set.update(variant_types)
+            for study in metakb_response["studies"]:
+                print(f"\t{study['type']} ({study['id']}): {study['description']}")
 
-        for study in metakb_response["studies"]:
-            print(f"\t{study['type']} ({study['id']}): {study['description']}")
+            # should be a single record each time
+            if sum([1 for _ in vcf_reader.fetch(chrom, pos - 1, pos)]) != 1:
+                print(f"[WARNING] more than one record found at pos {pos}")
 
-        # should be a single record each time
-        if sum([1 for _ in vcf_reader.fetch(chrom, pos - 1, pos)]) != 1:
-            print(f"[WARNING] more than one record found at pos {pos}")
+            for record_idx, record in enumerate(vcf_reader.fetch(chrom, pos - 1, pos)):
+                print(
+                    f"scanning row {record.chrom}, {record.pos}, {record.ref}, {record.alts}"
+                )
+
+                assert ref == record.ref, f"expected ref {record.ref}, got {ref}"
+                if alt not in record.alts:
+                    print(
+                        f"Skipping {gnomad_expr}, expected one of {record.alts} alts, got {alt}"
+                    )
+                    continue
+
+                # populate patient/sample dictionary
+                id_count = 0
+
+                for sample, genotype in record.samples.items():
+                    gt_values = genotype["GT"]
+
+                    # Check if any allele is non-zero
+                    if any(int(allele) > 0 for allele in gt_values):
+                        id_count += 1
+                        if sample not in sample_evidence_dict:
+                            sample_evidence_dict[sample] = {}
+
+                        if "vrs_ids" in sample_evidence_dict[sample]:
+                            sample_evidence_dict[sample]["vrs_ids"].append(allele_id)
+                            sample_evidence_dict[sample]["study_ids"].extend(study_ids)
+                            sample_evidence_dict[sample]["variant_types"].extend(
+                                variant_types
+                            )
+                        else:
+                            sample_evidence_dict[sample]["vrs_ids"] = [allele_id]
+                            sample_evidence_dict[sample]["study_ids"] = list(study_ids)
+                            sample_evidence_dict[sample]["variant_types"] = list(
+                                variant_types
+                            )
+
+                print(f"\ttotal count: {id_count}\n")
+
+        # get cohort allele counts
+        focus_allele_count = 0
 
         for record_idx, record in enumerate(vcf_reader.fetch(chrom, pos - 1, pos)):
+            print(
+                f"[CAF] summing row {record.chrom}, {record.pos}, {record.ref}, {record.alts}"
+            )
 
+            # check correct row
             assert ref == record.ref, f"expected ref {record.ref}, got {ref}"
             if alt not in record.alts:
                 print(
                     f"Skipping {gnomad_expr}, expected one of {record.alts} alts, got {alt}"
                 )
+                continue
 
-            # populate patient/sample dictionary
-            id_count = 0
-            for sample, genotype in record.samples.items():
-                gt_values = genotype["GT"]
+            # get number of alleles across all patients
+            focus_allele_count = sum(
+                [sum(genotype["GT"]) for _, genotype in record.samples.items()]
+            )
+            print(focus_allele_count)
 
-                # Check if any allele is non-zero
-                if any(int(allele) > 0 for allele in gt_values):
-                    id_count += 1
-                    if sample not in sample_dict:
-                        sample_dict[sample] = {}
+        # create caf dict for each metakb cache hit
+        locus_allele_count = num_samples * 2
+        allele_freq = focus_allele_count * 1.0 / (num_samples * 2)
 
-                    if "vrs_ids" in sample_dict[sample]:
-                        sample_dict[sample]["vrs_ids"].append(allele_id)
-                        sample_dict[sample]["study_ids"].extend(study_ids)
-                        sample_dict[sample]["variant_types"].extend(variant_types)
-                    else:
-                        sample_dict[sample]["vrs_ids"] = [allele_id]
-                        sample_dict[sample]["study_ids"] = list(study_ids)
-                        sample_dict[sample]["variant_types"] = list(variant_types)
-
-            print(f"\ttotal count: {id_count}\n")
-
-            # Create cohort allele frequency objects
-        # get counts
-        num_patients_w_allele = id_count
-        allele_freq = num_patients_w_allele*1.0/num_samples
-
-        # create caf dict
-        # TODO: locusAlleleCount: The total number of alleles observed at
-        # that specific gene locus in the cohort (including the focus allele
-        # and any alternate alleles)
-
-        caf_dict = {
-            "id": allele_id,
-            "type": "CohortAlleleFrequency",
-            "label": f"Cohort Allele Frequency for {allele_id} ({gnomad_expr})",
-            "derivedFrom": {
-                "id": f"AnVIL_1000G_PRIMED-data-model",
-                "type": "DataSet",
-                "label": f"AnVIL 1000G PRIMED Data Model",
-                "version": "Last Updated 3/12/2024",
-            },
-            "focusAllele": {
-                "oneOf": [allele_id],
-            },
-            "focusAlleleCount": num_patients_w_allele,
-            "locusAlleleCount": num_samples,
-            "alleleFrequency": allele_freq,
-            "cohort": {
-                "id": "all_3202_samples",
-                "label": "High-coverage sequencing of 3202 samples",
-            }
-        }
+        caf_dict = create_caf_dict(
+            allele_id,
+            gnomad_expr,
+            allele_info[VRS_OBJECT],
+            focus_allele_count,
+            locus_allele_count,
+            metakb_response,
+        )
+        print(f"Adding {caf_dict['label']}\n")
         caf_dicts.append(caf_dict)
-
-
-print("Cohort Allele Frequency Objects:")
-for caf_dict in caf_dicts:
-    print(json.dumps(caf_dict, indent=2), "\n")
 
 
 #### Figures ####
@@ -228,7 +271,7 @@ for variant_type in variants:
         num_matching_samples = 0
 
         # increment if sample has matching variant and kb
-        for _, id_lists in sample_dict.items():
+        for _, id_lists in sample_evidence_dict.items():
             v_types = np.array(id_lists["variant_types"])
 
             if variant_type == TOTAL:
@@ -301,7 +344,7 @@ if show_figures:
     plt.show()
 
 # average number of variants for all samples
-num_variant_hits = sum(len(e) for e in evidence_per_file.values())
+num_variant_hits = sum(len(e) for e in matches_per_file.values())
 print("total hits across all patients:", num_variant_hits)
 
 jitter = [0.008, 0.018, 0.004]
@@ -318,10 +361,12 @@ for i, variant_type in enumerate(variants):
                 if v == variant_type or variant_type == TOTAL
             ]
         )
-        for values in sample_dict.values()
+        for values in sample_evidence_dict.values()
     ]
 
-    num_variants_per_patient.extend([0 for _ in range(num_samples - len(sample_dict))])
+    num_variants_per_patient.extend(
+        [0 for _ in range(num_samples - len(sample_evidence_dict))]
+    )
     assert (
         len(num_variants_per_patient) == num_samples
     ), f"only {len(num_variants_per_patient)} samples, expected {num_samples}"
