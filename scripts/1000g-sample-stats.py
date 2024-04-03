@@ -97,7 +97,6 @@ matches_per_file = {}
 METAKB_DIR = f"../tests/fixtures/metakb"
 json_paths = list(pathlib.Path(METAKB_DIR).glob("*.json"))
 
-
 # collect all evidence from a list of metrics files in a directory
 all_metrics_paths = glob(f"{metrics_dir}/metrics*.yaml")
 
@@ -204,8 +203,6 @@ for file_path, evidence in matches_per_file.items():
                 print(f"\ttotal count: {id_count}\n")
 
         # get cohort allele counts
-        focus_allele_count = 0
-
         for record_idx, record in enumerate(vcf_reader.fetch(chrom, pos - 1, pos)):
             print(
                 f"[CAF] summing row {record.chrom}, {record.pos}, {record.ref}, {record.alts}"
