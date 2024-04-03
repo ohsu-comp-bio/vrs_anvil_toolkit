@@ -26,11 +26,12 @@ STATUS = "status"
 SUCCESSES = "successes"
 ERROR = "error"
 METAKB_HITS = "metakb_hits"
-EVIDENCE = "evidence"
+MATCHES = "matches"
 START_TIME = "start_time"
 END_TIME = "end_time"
 ELAPSED_TIME = "elapsed_time"
 LINE_COUNT = "line_count"
+VRS_OBJECT = "vrs_object"
 
 
 def recursive_defaultdict():
@@ -167,10 +168,10 @@ def annotate_all(
             if any([metakb_proxy.get(_) for _ in vrs_ids(allele)]):
                 _logger.info(f"VRS id {allele.id} found in metakb. {result}")
 
-                # TODO: once metakb api is setup, call metakb here
-                # and add actual evidence to this object as well (#3)
-                metrics[file_path][EVIDENCE][allele.id] = {
+                # add vrs_id, allele_dict,actual evidence to this object as well (#3)
+                metrics[file_path][MATCHES][allele.id] = {
                     PARAMETERS: {"fmt": result.fmt, "var": result.var},
+                    VRS_OBJECT: allele.model_dump(exclude_none=True)
                 }
 
                 metrics[file_path][METAKB_HITS] += 1
@@ -202,8 +203,8 @@ def annotate_all(
             if k != TOTAL:
                 if "errors" in metrics[k]:
                     metrics[k]["errors"] = dict(metrics[k]["errors"])
-                if EVIDENCE in metrics[k]:
-                    metrics[k][EVIDENCE] = dict(metrics[k][EVIDENCE])
+                if MATCHES in metrics[k]:
+                    metrics[k][MATCHES] = dict(metrics[k][MATCHES])
 
         yaml.dump(dict(metrics), f)
 
