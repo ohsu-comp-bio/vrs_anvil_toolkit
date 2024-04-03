@@ -8,7 +8,7 @@ caveats: variant match on vrs id, not on
   - matching zygosity
   - germline vs somatic variant
 
-(to be run in a tmp/ directory)
+(run in a tmp/ directory in the repo root directory)
 """
 
 import json
@@ -27,9 +27,7 @@ from vrs_anvil import query_metakb
 from vrs_anvil.annotator import MATCHES, TOTAL, VRS_OBJECT
 
 # grabs all metrics files from this directory
-# metrics_dir = "state/chr1_and_2"
-# metrics_dir = "state/chr1" # chr1 results from 1000g chr1...vcf.gz
-metrics_dir = "state/chr1_new"
+metrics_dir = "../tests/fixtures/chr1_metrics"
 
 # settings and files to load
 figure_dir = "figures"
