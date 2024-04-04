@@ -8,7 +8,12 @@ caveats: variant match on vrs id, not on
   - matching zygosity
   - germline vs somatic variant
 
-(run in a tmp/ directory in the repo root directory)
+to run...
+  - create a tmp/ directory in the repo root directory
+  - download the chr1 vcf.gz file from Terra to
+    work/1kGP_high_coverage_Illumina.chr1.filtered.SNV_INDEL_SV_phased_panel.vcf.gz
+  - cd tmp/
+  - python ../scripts/1000g-sample-stats.py
 """
 
 import json
