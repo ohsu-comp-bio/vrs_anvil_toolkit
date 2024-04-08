@@ -1,0 +1,36 @@
+total:
+  elapsed_time: 82.36205506324768
+  end_time: 1712097112.431828
+  errors: 0
+  start_time: 1712097030.069773
+  successes: 349340
+work/1kGP_high_coverage_Illumina.chr1.filtered.SNV_INDEL_SV_phased_panel.vcf.gz:
+  elapsed_time: 81.33523607254028
+  end_time: 1712097111.421123
+  errors: {}
+  line_count: 350001
+  matches:
+    ga4gh:VA.SOEVGpU16hxYQtJNeRyfq0V-B0rSOGK-:
+      parameters:
+        fmt: gnomad
+        var: chr1-11796321-G-A
+      vrs_object:
+        digest: SOEVGpU16hxYQtJNeRyfq0V-B0rSOGK-
+        id: ga4gh:VA.SOEVGpU16hxYQtJNeRyfq0V-B0rSOGK-
+        location:
+          digest: tp57waJdFWUvBp5Pj9doEDi6_k2T220Y
+          end: 11796321
+          id: ga4gh:SL.tp57waJdFWUvBp5Pj9doEDi6_k2T220Y
+          sequenceReference:
+            refgetAccession: SQ.Ya6Rs7DHhDeg7YaOSg1EoNi3U_nQ9SvO
+            type: SequenceReference
+          start: 11796320
+          type: SequenceLocation
+        state:
+          sequence: A
+          type: LiteralSequenceExpression
+        type: Allele
+  metakb_hits: 1
+  start_time: 1712097030.085887
+  status: finished
+  successes: 349340

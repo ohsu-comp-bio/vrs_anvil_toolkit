@@ -18,7 +18,7 @@ import requests
 
 _logger = logging.getLogger("vrs_anvil")
 LOGGED_ALREADY = set()
-METAKB_API = "http://metakb-dev-eb.us-east-2.elasticbeanstalk.com/api/v2"
+METAKB_API = "https://dev-search.cancervariants.org/api/v2"
 
 
 manifest: "Manifest" = None
@@ -133,6 +133,7 @@ def generate_gnomad_ids(vcf_line, compute_for_ref: bool = True) -> list[str]:
 def params_from_vcf(path, limit=None) -> Generator[dict, None, None]:
     """Open the vcf file, skip headers, yield the first lines as gnomad-like IDs"""
     from vrs_anvil.translator import VCFItem
+
     c = 0
     with open(path, "r") as f:
         for line in f:
@@ -140,7 +141,13 @@ def params_from_vcf(path, limit=None) -> Generator[dict, None, None]:
                 continue
             gnomad_ids = generate_gnomad_ids(line)
             for gnomad_id in gnomad_ids:
-                yield VCFItem(fmt="gnomad", var=gnomad_id, file_name=path, line_number=c, identifier=None)  # TODO - add identifier
+                yield VCFItem(
+                    fmt="gnomad",
+                    var=gnomad_id,
+                    file_name=path,
+                    line_number=c,
+                    identifier=None,
+                )  # TODO - add identifier
             c += 1
             if limit and c > limit:
                 break
@@ -297,9 +304,9 @@ class Manifest(BaseModel):
         return self
 
 
-def query_metakb(id, log=False):
+def query_metakb(vrs_id, log=False):
     """Query metakb using vrs id"""
-    response = requests.get(f"{METAKB_API}/search/studies?variation={id}")
+    response = requests.get(f"{METAKB_API}/search/studies?variation={vrs_id}")
 
     if response.status_code >= 400:
         print(f"API error: {response.text} ({response.status_code})")
@@ -307,7 +314,7 @@ def query_metakb(id, log=False):
 
     response_json = response.json()
 
-    if response_json["warnings"] == []:
+    if not response_json["warnings"]:
         return response_json
 
     if log:
@@ -320,7 +327,9 @@ def run_command_in_background(command) -> Any:
     # Detach the process from the parent process (this process)
     if not isinstance(command, list):
         command = command.split()
-    return subprocess.Popen(command, shell=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return subprocess.Popen(
+        command, shell=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )
 
 
 def get_process_info(pid):

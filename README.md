@@ -57,15 +57,11 @@ In addition, this project facilitates the retrieval of evidence associated with 
    ```
 
 ### Usage
-
 **Manifest**
 
-The configuration is controlled by a [manifest.yaml](tests/fixtures/manifest.yaml) file.  The manifest file specifies the input VCF file(s), the output directory, and other parameters.
-
-```yaml
+The configuration is controlled by a [manifest.yaml](tests/fixtures/manifest.yaml) file. The manifest file specifies the input VCF file(s), the output directory, and other parameters.
 
 **CLI**
-
 ```bash
 source venv/bin/activate
 # navigate to a working directory, with your manifest.yaml file.  Add the VCF urls or file paths to your manifest
@@ -75,19 +71,29 @@ vrs_anvil annotate
 
 # run the vrs_anvil command in parallel, one process per VCF file
 vrs_anvil annotate --scatter
+
+# run the vrs_anvil command in parallel in the background
+nohup vrs_anvil annotate --scatter & # press enter to continue
+
 # get the status of the scatter processes
 vrs_anvil ps
-
-
 ```
 
-**Processing VCF Files**
-TODO - update this section with vrs-python instructions...
-Replace `input.vcf` with the name of your VCF file. The processed VCF file with GA4GH VRS identifiers will be generated as `output_processed.vcf` in the same directory.
+**Processing VCF Files ([vrs-python](https://github.com/ga4gh/vrs-python))**
 
-**Developing in Python**
-For an example notebook on usage, see [1000g_patient_na12878_evidence.ipynb](scripts/1000g_patient_na12878_evidence.ipynb). If working on Terra, see the vrs-anvil workspace.
+vrs-python is a GA4GH GKS package centered around creating Variant Representation specification (VRS) IDs: consistent, globally unique identifiers for variation. Some of its functionality includes variant ID translation and VCF annotation. Used as a dependency in vrs_anvil, it can also be used as a standalone package.
 
+For Python usage, see [vrs_vcf_annotator.py](scripts/vrs_vcf_annotator.py) for an example.
+
+For CLI usage:
+```bash
+python3 -m ga4gh.vrs.extras.vcf_annotation --vcf_in tests/fixtures/1kGP.chr1.1000.vcf --vcf_out annotated_output.vcf.gz --vrs_pickle_out allele_dicts.pkl --seqrepo_root_dir ~/seqrepo/latest
+```
+
+The above is an example using an example vcf. Replace the `--vcf_out` and `vrs_pickle_out` here with your desired output file path, where the output vcf can be BCF (`vcf.gz`) or VCF (`vcf`)
+
+**Terra**
+The command line utility supports Google Cloud URIs and running commands in the background to interop with Terra out-of-the-box. This is described in the [CLI usage](#features) above. For an example notebook, see `vrs-anvil-demo.ipynb` on the `vrs-anvil` workspace.
 
 ### Contributing
 

@@ -44,7 +44,10 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
             if ctx.invoked_subcommand == "annotate":
 
                 # Create a rotating file handler with a max size of 10MB and keep 3 backup files
-                log_path = pathlib.Path(manifest.state_directory) / f"vrs_anvil_{timestamp_str}_{os.getpid()}.log"
+                log_path = (
+                    pathlib.Path(manifest.state_directory)
+                    / f"vrs_anvil_{timestamp_str}_{os.getpid()}.log"
+                )
                 file_handler = RotatingFileHandler(
                     log_path, maxBytes=10 * 1024 * 1024, backupCount=3
                 )
@@ -81,8 +84,14 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
 
 
 @cli.command("annotate")
-@click.option('--scatter', help='Start a background process per VCF file.', required=False, default=False,
-              is_flag=True, show_default=True)
+@click.option(
+    "--scatter",
+    help="Start a background process per VCF file.",
+    required=False,
+    default=False,
+    is_flag=True,
+    show_default=True,
+)
 @click.pass_context
 def annotate_cli(ctx, scatter: bool):
     """Read manifest file, annotate variants, all parameters controlled by manifest.yaml."""
@@ -95,7 +104,9 @@ def annotate_cli(ctx, scatter: bool):
             manifest = ctx.obj["manifest"]
             _logger.debug(f"Manifest: {ctx.obj['manifest']}")
             click.secho("🚧  annotating variants", fg="yellow")
-            metrics_file = annotate_all(manifest, max_errors=ctx.obj["max_errors"], timestamp_str=timestamp_str)
+            metrics_file = annotate_all(
+                manifest, max_errors=ctx.obj["max_errors"], timestamp_str=timestamp_str
+            )
             click.secho(f"📊  metrics available in {metrics_file}", fg="green")
         except Exception as exc:
             click.secho(f"{exc}", fg="red")
@@ -114,25 +125,50 @@ def annotate_cli(ctx, scatter: bool):
                 child_manifest.vcf_files = [_]
                 child_manifest.num_threads = 1
                 child_manifest.disable_progress_bars = True
-                child_manifest_path = pathlib.Path(child_manifest.work_directory) / f"manifest_{timestamp_str}_{c}.yaml"
+                child_manifest_path = (
+                    pathlib.Path(child_manifest.work_directory)
+                    / f"manifest_{timestamp_str}_{c}.yaml"
+                )
                 with open(child_manifest_path, "w") as stream:
                     yaml.dump(child_manifest.model_dump(), stream)
-                child_process = run_command_in_background(f'vrs_anvil --manifest {child_manifest_path} annotate')
-                click.secho(f"🚧  annotating {_} on pid {child_process.pid}", fg="yellow")
-                scattered_processes.append({'pid': child_process.pid, 'manifest': str(child_manifest_path), 'vcf': _})
+                child_process = run_command_in_background(
+                    f"vrs_anvil --manifest {child_manifest_path} annotate"
+                )
+                click.secho(
+                    f"🚧  annotating {_} on pid {child_process.pid}", fg="yellow"
+                )
+                scattered_processes.append(
+                    {
+                        "pid": child_process.pid,
+                        "manifest": str(child_manifest_path),
+                        "vcf": _,
+                    }
+                )
                 child_processes.append(child_process)
                 c += 1
-            scattered_processes_path = pathlib.Path(parent_manifest.work_directory) / f"scattered_processes_{timestamp_str}.yaml"
-            scattered_processes = {'parent_pid': os.getpid(), 'processes': scattered_processes}
+            scattered_processes_path = (
+                pathlib.Path(parent_manifest.work_directory)
+                / f"scattered_processes_{timestamp_str}.yaml"
+            )
+            scattered_processes = {
+                "parent_pid": os.getpid(),
+                "processes": scattered_processes,
+            }
             with open(scattered_processes_path, "w") as stream:
                 yaml.dump(scattered_processes, stream)
-            click.secho(f"📊 scattered processes available in {scattered_processes_path}", fg="green")
+            click.secho(
+                f"📊 scattered processes available in {scattered_processes_path}",
+                fg="green",
+            )
             click.secho("🕒 waiting for processes to complete", fg="yellow")
             try:
                 for _ in child_processes:
                     _.wait()
             except KeyboardInterrupt:
-                click.secho("🚨  caught KeyboardInterrupt, terminating child processes", fg="red")
+                click.secho(
+                    "🚨  caught KeyboardInterrupt, terminating child processes",
+                    fg="red",
+                )
                 for _ in child_processes:
                     _.terminate()
                 for _ in child_processes:
@@ -151,41 +187,56 @@ def ps_cli(ctx):
         assert "manifest" in ctx.obj, "Manifest not found."
         parent_manifest = ctx.obj["manifest"]
         scattered_processes_path = pathlib.Path(parent_manifest.work_directory)
-        scattered_processes_paths = sorted(x for x in scattered_processes_path.glob("scattered_processes_*.yaml"))
+        scattered_processes_paths = sorted(
+            x for x in scattered_processes_path.glob("scattered_processes_*.yaml")
+        )
         if not scattered_processes_paths:
-            click.secho(f"🚧  no scattered processes found in {parent_manifest.work_directory}/scattered_processes_*.yaml", fg="red")
+            click.secho(
+                f"🚧  no scattered processes found in {parent_manifest.work_directory}/scattered_processes_*.yaml",
+                fg="red",
+            )
             return
         scattered_processes_path = scattered_processes_paths[-1]
         state_dir = pathlib.Path(parent_manifest.state_directory)
         with open(scattered_processes_path, "r") as stream:
             scattered_processes = yaml.safe_load(stream)
-            for _ in scattered_processes['processes']:
-                log_file = 'NA'
-                metrics_file = 'NA'
+            for _ in scattered_processes["processes"]:
+                log_file = "NA"
+                metrics_file = "NA"
                 try:
                     log_file = sorted(state_dir.glob(f"vrs_anvil*{_['pid']}.log"))[-1]
-                    metrics_file = sorted(state_dir.glob(f"metrics_*{_['pid']}.yaml"))[-1]
+                    metrics_file = sorted(state_dir.glob(f"metrics_*{_['pid']}.yaml"))[
+                        -1
+                    ]
                 except IndexError:
                     pass
 
-                click.secho(f"🚧  pid: {str(_['pid'])}, manifest: {str(_['manifest'])}, vcf: {str(_['vcf'])}, metrics_file: {metrics_file}, log_file: {log_file}", fg="yellow")
-                process = get_process_info(_['pid'])
+                click.secho(
+                    f"🚧  pid: {str(_['pid'])}, manifest: {str(_['manifest'])}, vcf: {str(_['vcf'])}, metrics_file: {metrics_file}, log_file: {log_file}",
+                    fg="yellow",
+                )
+                process = get_process_info(_["pid"])
                 if not process:
                     # assert pathlib.Path(metrics_file).exists(), f"metrics file not found: {metrics_file}"
                     # assert pathlib.Path(log_file).exists(), f"log file not found: {log_file}"
                     click.secho("  ✅  completed", fg="green")
                 else:
-                    io_counters = 'NA'
-                    memory_info = 'NA'
-                    if process.status() == 'running':
+                    io_counters = "NA"
+                    memory_info = "NA"
+                    if process.status() == "running":
                         try:
-                            if hasattr(process, 'io_counters'):
+                            if hasattr(process, "io_counters"):
                                 io_counters = process.io_counters()
-                            if hasattr(process, 'memory_info'):
+                            if hasattr(process, "memory_info"):
                                 memory_info = process.memory_info()
                         except Exception as exc:
-                            _logger.info(f"could not get io_counters/memory_info pid: {_['pid']} error:{exc}")
-                    click.secho(f"  📊 {process.status()} cpu_percent: {process.cpu_percent(interval=0.1)}%, io_counters: {io_counters}, memory_info: {memory_info}", fg="yellow")
+                            _logger.info(
+                                f"could not get io_counters/memory_info pid: {_['pid']} error:{exc}"
+                            )
+                    click.secho(
+                        f"  📊 {process.status()} cpu_percent: {process.cpu_percent(interval=0.1)}%, io_counters: {io_counters}, memory_info: {memory_info}",
+                        fg="yellow",
+                    )
     except Exception as exc:
         click.secho(f"{exc}", fg="red")
         _logger.exception(exc)
