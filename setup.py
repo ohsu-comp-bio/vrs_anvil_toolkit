@@ -57,7 +57,7 @@ setup(
     long_description_content_type='text/markdown',  # Optional (see note above)
 
     # Project's main homepage.
-    url='https://github.com/ohsu-comp-bio/vrs-anvil',  # Optional
+    url='https://github.com/ohsu-comp-bio/vrs_anvil_toolkit',  # Optional
 
     # This should be your name or the name of the organization which owns the
     # project.
@@ -137,7 +137,7 @@ setup(
     # maintainers, and where to support the project financially. The key is
     # what's used to render the link text on PyPI.
     project_urls={  # Optional
-        'Bug Reports': 'https://github.com/ohsu-comp-bio/vrs-anvil/issues',
-        'Source': 'https://github.com/ohsu-comp-bio/vrs-anvil',
+        'Bug Reports': 'https://github.com/ohsu-comp-bio/vrs_anvil_toolkit/issues',
+        'Source': 'https://github.com/ohsu-comp-bio/vrs_anvil_toolkit',
     },
 )

@@ -85,3 +85,20 @@ Code of Conduct
 Please note that our project has a Code of Conduct. We expect all contributors to adhere to its guidelines to ensure a positive and inclusive community.
 
 Thank you for contributing to our project! Your efforts are highly appreciated. If you have any questions or need assistance, feel free to reach out to us.
+
+- PyPi
+
+```
+# update pypi
+
+# pypi credentials - see https://twine.readthedocs.io/en/stable/#environment-variables
+
+export TWINE_USERNAME=  #  the username to use for authentication to the repository.
+export TWINE_PASSWORD=  # the password to use for authentication to the repository.
+
+# this could be maintained as so: export $(cat .env | xargs)
+
+rm -r dist/
+python3  setup.py sdist bdist_wheel
+twine upload dist/*
+```
