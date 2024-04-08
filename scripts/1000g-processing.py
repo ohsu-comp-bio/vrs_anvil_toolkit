@@ -35,7 +35,7 @@ INPUT_DIR="/home/jupyter/vrs-python-testing/tmp/work/high_coverage_3202_samples"
 SEQREPO_DIR = "/home/jupyter/seqrepo/latest"
 BASE_DIR = "/home/jupyter/vrs-python-testing/tmp"
 
-os.makedirs(INPUT_DIR, exists_ok=True)
+os.makedirs(INPUT_DIR, exist_ok=True)
 
 # helper function
 def truncate(s, first_few, last_few):
@@ -367,3 +367,5 @@ file_name = f'caf_objects_{TIMESTAMP}.json'
 
 with open(f'{caf_dir}/{file_name}', 'w') as file:
     json.dump(caf_dicts, file)
+
+print(f"\nwrote cohort allele frequency objects to {caf_dir}/{file_name}!")
