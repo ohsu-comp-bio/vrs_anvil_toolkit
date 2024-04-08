@@ -22,14 +22,25 @@ from firecloud import api as fapi
 from vrs_anvil import query_metakb
 from vrs_anvil.annotator import MATCHES, TOTAL, VRS_OBJECT
 
-setup_cmd = f"cd ~/vrs-python-testing && bash terra/setup.sh"
-output = subprocess.run(setup_cmd, shell=True, check=True)
+# data source
+SOURCE_BUCKET = os.getenv("WORKSPACE_BUCKET").split("//")[1]
+TIMESTAMP = "20240329_013953"
+BUCKET_DIR = "scattered/state-04-07-2024"
 
-INPUT_DIR="/home/jupyter/vrs-python-testing/tmp/work/high_coverage_3202_samples"
+# data directories
+REPO_DIR = os.path.expanduser("~/vrs_anvil_toolkit")
+BASE_DIR = f"{REPO_DIR}/tmp"
+INPUT_DIR = f"{BASE_DIR}/work/high_coverage_3202_samples"
 SEQREPO_DIR = "/home/jupyter/seqrepo/latest"
-BASE_DIR = "/home/jupyter/vrs-python-testing/tmp"
+METRICS_DIR = os.path.expanduser(f"{BASE_DIR}/state/{TIMESTAMP}")
 
 os.makedirs(INPUT_DIR, exist_ok=True)
+os.makedirs(METRICS_DIR, exist_ok=True)
+
+# ensure terra is setup
+setup_cmd = f"cd {REPO_DIR} && bash terra/setup.sh"
+output = subprocess.run(setup_cmd, shell=True, check=True)
+
 
 # helper function
 def truncate(s, first_few, last_few):
@@ -37,34 +48,20 @@ def truncate(s, first_few, last_few):
     return f"{s[:first_few]}...{s[-last_few:]}"
 
 
-# pull down all metrics files stuff
-
-# constants
-SOURCE_BUCKET = os.getenv("WORKSPACE_BUCKET").split("//")[1]
-TIMESTAMP = "20240329_013953"
-BUCKET_DIR = "scattered/state-04-07-2024"
-
-# Find matching files
+# get all metrics file blobs
 client = storage.Client()
 source_bucket = client.get_bucket(SOURCE_BUCKET)
 all_blobs = source_bucket.list_blobs(prefix=BUCKET_DIR)
-
 blobs = [blob for blob in all_blobs if blob.name.endswith(".yaml")]
-
 print("number of metrics files:", len(blobs))
 
-
-# create output directory
-RESULTS_DIR = os.path.expanduser(f"~/vrs-python-testing/tmp/state/{TIMESTAMP}")
-os.makedirs(RESULTS_DIR, exist_ok=True)
-print(f"downloading to {RESULTS_DIR}:")
-
-# get blob if not already downloaded
+# download blobs to file if not already downloaded
+print(f"downloading to {METRICS_DIR}:")
 metrics_paths = []
 
 for blob in blobs:
     file_name = blob.name.split("/")[-1]
-    file_path = f"{RESULTS_DIR}/{file_name}"
+    file_path = f"{METRICS_DIR}/{file_name}"
     metrics_paths.append(file_path)
 
     if os.path.exists(file_path):
@@ -75,29 +72,40 @@ for blob in blobs:
         print(f"downloaded {file_path}")
 
 # get original 1000g metadata
-df = pd.read_csv(io.StringIO(fapi.get_entities_tsv("anvil-datastorage", \
-                "AnVIL_1000G_PRIMED-data-model", "sequencing_file", model="flexible").text), sep='\t')
+df = pd.read_csv(
+    io.StringIO(
+        fapi.get_entities_tsv(
+            "anvil-datastorage",
+            "AnVIL_1000G_PRIMED-data-model",
+            "sequencing_file",
+            model="flexible",
+        ).text
+    ),
+    sep="\t",
+)
 
 # get rid of gvcf data
-df_vcf = df[df['file_type'].isin(['VCF', 'VCF index'])]
-df_1kgp = df_vcf[df_vcf['file_path'].str.contains('1kGP')]
+df_vcf = df[df["file_type"].isin(["VCF", "VCF index"])]
+df_1kgp = df_vcf[df_vcf["file_path"].str.contains("1kGP")]
 
-num_vcf_idx_files = sum(df_1kgp['file_type'] == 'VCF index')
-num_vcf_files = sum(df_1kgp['file_type'] == 'VCF')
-assert num_vcf_files == 23 and num_vcf_idx_files == 23, \
-    f"check number of files, {num_vcf_files} vcfs and {num_vcf_idx_files} index files"
+num_vcf_idx_files = sum(df_1kgp["file_type"] == "VCF index")
+num_vcf_files = sum(df_1kgp["file_type"] == "VCF")
+assert (
+    num_vcf_files == 23 and num_vcf_idx_files == 23
+), f"check number of files, {num_vcf_files} vcfs and {num_vcf_idx_files} index files"
 
 # load all vcf files if not pulled
-chrs = [str(num) for num in range(1,23)] + ["X"]
+chrs = [str(num) for num in range(1, 23)] + ["X"]
 
 if chrs is not None:
-    df_chrs = df_1kgp[df_1kgp['chromosome'].isin(set(chrs))]
+    df_chrs = df_1kgp[df_1kgp["chromosome"].isin(set(chrs))]
 else:
     df_chrs = df_1kgp
-    specific_chromosomes = df_chrs['chromosome'].unique()
+    specific_chromosomes = df_chrs["chromosome"].unique()
 
-assert(len(df_chrs) == 2*len(chrs)), \
-    f"Expected 2 files per chr but {len(df_chrs)} files and {len(chrs)} chrs"
+assert len(df_chrs) == 2 * len(
+    chrs
+), f"Expected 2 files per chr but {len(df_chrs)} files and {len(chrs)} chrs"
 
 # pull from cloud and save paths and chr order
 raw_vcfs = []
@@ -109,7 +117,7 @@ for _, row in df_chrs.iterrows():
     output_file = f"{INPUT_DIR}/{file_name}"
 
     # save vcfs for later, ignore indices
-    if row["file_type"] == 'VCF':
+    if row["file_type"] == "VCF":
         raw_vcfs.append(output_file)
         chrs_of_interest.append(row["chromosome"])
 
@@ -121,7 +129,7 @@ for _, row in df_chrs.iterrows():
 
 # collect all evidence from a list of metrics files in a directory
 matches_per_file = {}
-all_metrics_paths = sorted(glob(f"{RESULTS_DIR}/metrics*.yaml"))
+all_metrics_paths = sorted(glob(f"{METRICS_DIR}/metrics*.yaml"))
 
 total_matches = 0
 for metrics_path in all_metrics_paths:
@@ -138,16 +146,18 @@ for metrics_path in all_metrics_paths:
         original_path = os.path.expanduser(f"{BASE_DIR}/{file_path}")
         vcf_reader = pysam.VariantFile(original_path)
         num_samples = len(vcf_reader.header.samples)
-        assert num_samples == 3202, \
-            f"expected 3202 samples for {file_path}, got {num_samples}"
+        assert (
+            num_samples == 3202
+        ), f"expected 3202 samples for {file_path}, got {num_samples}"
 
         # check if matches to metakb cache found
         print("from file", truncate(original_path, 0, 46))
         if MATCHES in metrics_dict:
             expected_matches = int(metrics_dict["metakb_hits"])
             actual_matches = len(metrics_dict[MATCHES])
-            assert expected_matches == actual_matches, \
-                f"expected {expected_matches} metakb matches, found {actual_matches}"
+            assert (
+                expected_matches == actual_matches
+            ), f"expected {expected_matches} metakb matches, found {actual_matches}"
             print(f"{actual_matches} matches found")
 
             total_matches += actual_matches
@@ -163,9 +173,12 @@ print("files with evidence:")
 for file_path in sorted(matches_per_file.keys()):
     print(truncate(file_path, 0, 47))
 
+
 # function to update samples dict given coordinates and a vcf
-def update_sample_evidence_dict(sample_evidence_dict, vcf_reader, chrom, pos, ref, alt, study_ids, variant_types):
-    '''update sample evidence for a given allele'''
+def update_sample_evidence_dict(
+    sample_evidence_dict, vcf_reader, chrom, pos, ref, alt, study_ids, variant_types
+):
+    """update sample evidence for a given allele"""
 
     found_corr_record = False
 
@@ -177,8 +190,9 @@ def update_sample_evidence_dict(sample_evidence_dict, vcf_reader, chrom, pos, re
             f"\tparsing samples for row {record.chrom}, {record.pos}, {record.ref}, {record.alts}"
         )
 
-        assert not found_corr_record, \
-            "more than 1 record corresponds to the same ref, alt"
+        assert (
+            not found_corr_record
+        ), "more than 1 record corresponds to the same ref, alt"
 
         assert ref == record.ref, f"expected ref {record.ref}, got {ref}"
         if alt not in record.alts:
@@ -199,7 +213,7 @@ def update_sample_evidence_dict(sample_evidence_dict, vcf_reader, chrom, pos, re
                 id_count += 1
                 sample_evidence_dict[sample] = {
                     "study_ids": list(study_ids),
-                    "variant_types": list(variant_types)
+                    "variant_types": list(variant_types),
                 }
 
         return id_count
@@ -207,17 +221,21 @@ def update_sample_evidence_dict(sample_evidence_dict, vcf_reader, chrom, pos, re
 
 # get focus allele count for cohort allele frequency given a vcf and coordinates
 def get_focus_allele_count(vcf_reader, chrom, pos, ref, alt):
-    '''calculates focus allele count for a given allele'''
+    """calculates focus allele count for a given allele"""
 
     for _, record in enumerate(vcf_reader.fetch(chrom, pos - 1, pos)):
-        print(f"\tCAF: getting allele counts for {record.chrom}, " + \
-              f"{record.pos}, {record.ref}, {record.alts}")
+        print(
+            f"\tCAF: getting allele counts for {record.chrom}, "
+            + f"{record.pos}, {record.ref}, {record.alts}"
+        )
 
         # check correct row
         assert ref == record.ref, f"expected ref {record.ref}, got {ref}"
         if alt not in record.alts:
-            print(f"\tSkipping {chrom}-{pos}-{ref}-{alt}, expected one of " + \
-                f"{record.alts} alts, got {alt}")
+            print(
+                f"\tSkipping {chrom}-{pos}-{ref}-{alt}, expected one of "
+                + f"{record.alts} alts, got {alt}"
+            )
             continue
 
         # get number of alleles across all patients
@@ -237,7 +255,7 @@ def create_caf_dict(
     locus_allele_count,
     ancillary_results=None,
 ):
-    '''create cohort allele frequency dict'''
+    """create cohort allele frequency dict"""
     allele_frequency = focus_allele_count * 1.0 / locus_allele_count
 
     caf_dict = {
@@ -264,6 +282,7 @@ def create_caf_dict(
         caf_dict["ancillaryResults"] = ancillary_results
 
     return caf_dict
+
 
 # data stores
 sample_evidence_dict = defaultdict(list)
@@ -309,25 +328,24 @@ for file_path, matches in matches_per_file.items():
                 print(f"\t{study['type']} ({study['id']}): {study['description']}")
             print()
 
-        id_count = update_sample_evidence_dict(sample_dict, \
-                  vcf_reader, chrom, pos, ref, alt, study_ids, variant_types)
+        id_count = update_sample_evidence_dict(
+            sample_dict, vcf_reader, chrom, pos, ref, alt, study_ids, variant_types
+        )
 
         print(f"\tNumber of matching samples: {id_count}\n")
 
         # get cohort allele counts
-        focus_allele_count = get_focus_allele_count(vcf_reader, \
-                           chrom, pos, ref, alt)
+        focus_allele_count = get_focus_allele_count(vcf_reader, chrom, pos, ref, alt)
         print("\tFocus allele count: ", focus_allele_count)
 
         locus_allele_count = num_samples * 2
         allele_freq = focus_allele_count * 1.0 / (num_samples * 2)
-        focus_allele = allele_info[VRS_OBJECT] if VRS_OBJECT in allele_info else allele_id
+        focus_allele = (
+            allele_info[VRS_OBJECT] if VRS_OBJECT in allele_info else allele_id
+        )
 
         # create ancillary_results for caf
-        ancillary_results = {
-            "patient_matches": id_count,
-            "sample_dict": sample_dict
-        }
+        ancillary_results = {"patient_matches": id_count, "sample_dict": sample_dict}
 
         if metakb_response is not None:
             ancillary_results["metakb_dict"] = metakb_response
@@ -348,16 +366,20 @@ for file_path, matches in matches_per_file.items():
 
 # output stats on cache to metakb api hits
 metakb_cache_hits = sum(len(e) for e in matches_per_file.values())
-print(f"ratio of metakb cache hits to api hits: {len(metakb_api_hits)}/{metakb_cache_hits}")
-print("Note: some metakb cache hits are not api hits because some VRS IDs may have matched molecular profiles", \
-     "that have no corresponding study ID in metakb because it did not pass metakb's normalizers")
+print(
+    f"ratio of metakb cache hits to api hits: {len(metakb_api_hits)}/{metakb_cache_hits}"
+)
+print(
+    "Note: some metakb cache hits are not api hits because some VRS IDs may have matched molecular profiles",
+    "that have no corresponding study ID in metakb because it did not pass metakb's normalizers",
+)
 
 # write Cohort Allele Frequency (CAF) objects to file, then read from it
 caf_dir = os.path.expanduser(f"{BASE_DIR}/state")
 os.makedirs(caf_dir, exist_ok=True)
-file_name = f'caf_objects_{TIMESTAMP}.json'
+file_name = f"caf_objects_{TIMESTAMP}.json"
 
-with open(f'{caf_dir}/{file_name}', 'w') as file:
+with open(f"{caf_dir}/{file_name}", "w") as file:
     json.dump(caf_dicts, file)
 
 print(f"\nwrote cohort allele frequency objects to {caf_dir}/{file_name}!")
