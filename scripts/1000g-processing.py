@@ -9,22 +9,16 @@ Get statistics from 1000g samples, including
 
 import io
 import json
-import matplotlib.pyplot as plt
-import numpy as np
 import os
 import pandas as pd
-import pathlib
 import pysam
-import seaborn as sns
 import subprocess
 import yaml
 
 from collections import defaultdict
 from google.cloud import storage
 from glob import glob
-from glom import glom
 from firecloud import api as fapi
-from re import match
 from vrs_anvil import query_metakb
 from vrs_anvil.annotator import MATCHES, TOTAL, VRS_OBJECT
 
@@ -49,14 +43,12 @@ def truncate(s, first_few, last_few):
 SOURCE_BUCKET = os.getenv("WORKSPACE_BUCKET").split("//")[1]
 TIMESTAMP = "20240329_013953"
 BUCKET_DIR = "scattered/state-04-07-2024"
-PATTERN = f"{BUCKET_DIR}/metrics_{TIMESTAMP}_*.yaml"
 
 # Find matching files
 client = storage.Client()
 source_bucket = client.get_bucket(SOURCE_BUCKET)
 all_blobs = source_bucket.list_blobs(prefix=BUCKET_DIR)
 
-# matching_files = glob(PATTERN)
 blobs = [blob for blob in all_blobs if blob.name.endswith(".yaml")]
 
 print("number of metrics files:", len(blobs))
@@ -139,7 +131,7 @@ for metrics_path in all_metrics_paths:
 
     # for each file in the metrics, add matches to dict
     for file_path, metrics_dict in metrics.items():
-        if file_path == "total":
+        if file_path == TOTAL:
             continue
 
         # load original vcf
