@@ -41,7 +41,7 @@ setup(
 
     # Versions should comply with PEP 440:
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.0.1rc1',  # Required
+    version='0.0.1rc2',  # Required
 
     # This is a one-line description or tagline of what your project does. This
     # corresponds to the "Summary" metadata field:
@@ -121,7 +121,7 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'vrs_anvil = vrs_anvil.cli:cli',
+            'vrs_bulk = vrs_anvil.cli:cli',
         ],
     },
 
