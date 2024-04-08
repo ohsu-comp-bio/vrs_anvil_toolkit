@@ -39,7 +39,7 @@ In addition, this project facilitates the retrieval of evidence associated with 
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/ohsu-comp-bio/vrs-anvil
+   git clone https://github.com/ohsu-comp-bio/vrs_bulk_toolkit
    cd vrs-anvil
    ```
 
@@ -67,21 +67,21 @@ source venv/bin/activate
 # navigate to a working directory, with your manifest.yaml file.  Add the VCF urls or file paths to your manifest
 
 # run the vrs_anvil command in the fore ground
-vrs_anvil annotate
+vrs_bulk annotate
 
-# run the vrs_anvil command in parallel, one process per VCF file
-vrs_anvil annotate --scatter
+# run the vrs_bulk command in parallel, one process per VCF file
+vrs_bulk annotate --scatter
 
-# run the vrs_anvil command in parallel in the background
-nohup vrs_anvil annotate --scatter & # press enter to continue
+# run the vrs_bulk command in parallel in the background
+nohup vrs_bulk annotate --scatter & # press enter to continue
 
 # get the status of the scatter processes
-vrs_anvil ps
+vrs_bulk ps
 ```
 
 **Processing VCF Files ([vrs-python](https://github.com/ga4gh/vrs-python))**
 
-vrs-python is a GA4GH GKS package centered around creating Variant Representation specification (VRS) IDs: consistent, globally unique identifiers for variation. Some of its functionality includes variant ID translation and VCF annotation. Used as a dependency in vrs_anvil, it can also be used as a standalone package.
+vrs-python is a GA4GH GKS package centered around creating Variant Representation specification (VRS) IDs: consistent, globally unique identifiers for variation. Some of its functionality includes variant ID translation and VCF annotation. Used as a dependency in vrs_bulk, it can also be used as a standalone package.
 
 For Python usage, see [vrs_vcf_annotator.py](scripts/vrs_vcf_annotator.py) for an example.
 
