@@ -20,11 +20,11 @@ In addition, this project facilitates the retrieval of evidence associated with 
    - GA4GH MetaKB Service Integration:  Utilizes the GA4GH MetaKB retrieve evidence associated with specified genomic alleles.
 
 3. **Output Generation:**
-   - Generates summary metrics about throughput, errors, evidence, and hits
+   - Generates summary metrics about throughput, errors, evidence, and hits.
    - Presents the retrieved evidence in a structured format, providing access to information about studies, publications, and other relevant details.
 
 4. **Additional Features**
-   - Provides configurable options like threading and caching for processing VCFs
+   - Provides configurable options like threading and caching for processing VCFs.
    - Implements robust error handling to address issues like invalid input files, invalid variants, and more.
 
 ## Getting Started
@@ -32,7 +32,7 @@ In addition, this project facilitates the retrieval of evidence associated with 
 ### Prerequisites
 
 - Python 3.10 or later
-- Internet connectivity to set up dependencies
+- Internet connectivity for dependency setup (seqrepo)
 
 ### Installation
 
@@ -44,15 +44,14 @@ In addition, this project facilitates the retrieval of evidence associated with 
    ```
 
 2. Install dependencies:
-   a. for local use
+   1. for local use
    ```bash
    # install postgresql@14 (required for vrs-python)
    brew install postgresql@14
    bash scripts/setup.sh
    ```
-   b. for use on Terra
+   2. for use on Terra
    ```bash
-   SEQREPO_ROOT=~
    bash terra/setup.sh
    ```
 
@@ -93,7 +92,7 @@ python3 -m ga4gh.vrs.extras.vcf_annotation --vcf_in tests/fixtures/1kGP.chr1.100
 The above is an example using an example vcf. Replace the `--vcf_out` and `vrs_pickle_out` here with your desired output file path, where the output vcf can be BCF (`vcf.gz`) or VCF (`vcf`)
 
 **Terra**
-The command line utility supports Google Cloud URIs and running commands in the background to interop with Terra out-of-the-box. This is described in the [CLI usage](#Usage) above. For an example notebook, see `vrs-anvil-demo.ipynb` on the `vrs-anvil` workspace.
+The command line utility supports Google Cloud URIs and running commands in the background to interop with Terra out-of-the-box. This is described in the CLI usage above. For an example notebook, see `vrs-anvil-demo.ipynb` on the `vrs-anvil` workspace.
 
 ### Contributing
 
