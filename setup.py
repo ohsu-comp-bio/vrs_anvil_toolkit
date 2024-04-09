@@ -30,18 +30,18 @@ setup(
     # package, this name will be registered for you. It will determine how
     # users can install this project, e.g.:
     #
-    # $ pip install vrs_anvil
+    # $ pip install vrs_anvil_toolkit
     #
     # And where it will live on PyPI: https://pypi.org/project/vrs_anvil/
     #
     # There are some restrictions on what makes a valid project name
     # specification here:
     # https://packaging.python.org/specifications/core-metadata/#name
-    name='vrs_anvil',  # Required
+    name='vrs_anvil_toolkit',  # Required
 
     # Versions should comply with PEP 440:
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.0.1rc1',  # Required
+    version='0.0.1',  # Required
 
     # This is a one-line description or tagline of what your project does. This
     # corresponds to the "Summary" metadata field:
@@ -57,7 +57,7 @@ setup(
     long_description_content_type='text/markdown',  # Optional (see note above)
 
     # Project's main homepage.
-    url='https://github.com/ohsu-comp-bio/vrs-anvil',  # Optional
+    url='https://github.com/ohsu-comp-bio/vrs_anvil_toolkit',  # Optional
 
     # This should be your name or the name of the organization which owns the
     # project.
@@ -121,7 +121,7 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'vrs_anvil = vrs_anvil.cli:cli',
+            'vrs_bulk = vrs_anvil.cli:cli',
         ],
     },
 
@@ -137,7 +137,7 @@ setup(
     # maintainers, and where to support the project financially. The key is
     # what's used to render the link text on PyPI.
     project_urls={  # Optional
-        'Bug Reports': 'https://github.com/ohsu-comp-bio/vrs-anvil/issues',
-        'Source': 'https://github.com/ohsu-comp-bio/vrs-anvil',
+        'Bug Reports': 'https://github.com/ohsu-comp-bio/vrs_anvil_toolkit/issues',
+        'Source': 'https://github.com/ohsu-comp-bio/vrs_anvil_toolkit',
     },
 )

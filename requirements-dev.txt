@@ -2,3 +2,8 @@ pytest
 flake8
 pre-commit
 black
+# pypi
+twine
+# packaging
+wheel
+setuptools
