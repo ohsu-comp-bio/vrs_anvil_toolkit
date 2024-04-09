@@ -1,13 +1,13 @@
 <img width="685" alt="image" src="https://github.com/ohsu-comp-bio/vrs-python-testing/assets/47808/909db052-972c-4508-a2f4-8a389de03320">
 
 
-# VRS AnVIL
+# VRS AnVIL Toolkit
 
 ## Project Overview
 
-This Python project is designed to process Variant Call Format (VCF) files or other sources of variant information and perform lookup operations on Genomic Variation Representation Service (GA4GH VRS) identifiers. The GA4GH VRS identifiers provide a standardized way to represent genomic variations, making it easier to exchange and share genomic information.
+This Python package is designed to process Variant Call Format (VCF) files and perform lookup operations on Genomic Variation Representation Service (GA4GH VRS) identifiers. The GA4GH VRS identifiers provide a standardized way to represent genomic variations, making it easier to exchange and share genomic information.
 
-In addition, this project facilitates the retrieval of evidence associated with genomic alleles by leveraging the Genomic Data Representation and Knowledge Base (GA4GH MetaKB) service. GA4GH MetaKB provides a comprehensive knowledge base that links genomic variants to relevant evidence, enabling users to access valuable information about genomic alleles.
+In addition, this project facilitates the retrieval of evidence associated with genomic alleles by leveraging the Genomic Data Representation and Knowledge Base (GA4GH MetaKB) service. GA4GH MetaKB provides a comprehensive knowledge base that links genomic variants to relevant clinical variant interpretations.
 
 ## Features
 
@@ -17,30 +17,30 @@ In addition, this project facilitates the retrieval of evidence associated with 
 2. **GA4GH VRS Identifier Lookup:**
    - Utilizes the GA4GH VRS API to perform lookups for each genomic variation mentioned in the VCF file.
    - Retrieves standardized identifiers for the alleles, enhancing interoperability with GA4GH-compliant systems.
-   - GA4GH MetaKB Service Integration:  Utilizes the GA4GH MetaKB service to query and retrieve evidence associated with the specified genomic alleles.
+   - GA4GH MetaKB Service Integration:  Utilizes the GA4GH MetaKB retrieve evidence associated with specified genomic alleles.
+
 3. **Output Generation:**
-   - Generates summary metrics about throughput, errors, and evidence hits and misses
-   - Optionally, generates a processed VCF file with additional GA4GH VRS identifiers for each genomic variation.
-   - Presents the retrieved evidence in a structured format, including information about studies, publications, and other relevant details.
+   - Generates summary metrics about throughput, errors, evidence, and hits
+   - Presents the retrieved evidence in a structured format, providing access to information about studies, publications, and other relevant details.
 
-
-4. **Error Handling:**
-   - Implements robust error handling to address issues like invalid input files, invalid variants, connectivity problems with the GA4GH MetaKB API, and more.
+4. **Additional Features**
+   - Provides configurable options like threading and caching for processing VCFs
+   - Implements robust error handling to address issues like invalid input files, invalid variants, and more.
 
 ## Getting Started
 
 ### Prerequisites
 
 - Python 3.10 or later
-- Internet connectivity for setting up dependencies, GA4GH MetaKB lookups, etc.
+- Internet connectivity to set up dependencies
 
 ### Installation
 
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/ohsu-comp-bio/vrs_bulk_toolkit
-   cd vrs-anvil
+   git clone https://github.com/ohsu-comp-bio/vrs_anvil_toolkit
+   cd vrs_anvil_toolkit
    ```
 
 2. Install dependencies:
@@ -59,14 +59,14 @@ In addition, this project facilitates the retrieval of evidence associated with 
 ### Usage
 **Manifest**
 
-The configuration is controlled by a [manifest.yaml](tests/fixtures/manifest.yaml) file. The manifest file specifies the input VCF file(s), the output directory, and other parameters.
+The configuration is controlled by a [manifest.yaml](tests/fixtures/manifest.yaml) file. This manifest file specifies the input VCF file(s), the output directory, and other configurations.
 
 **CLI**
 ```bash
 source venv/bin/activate
 # navigate to a working directory, with your manifest.yaml file.  Add the VCF urls or file paths to your manifest
 
-# run the vrs_anvil command in the fore ground
+# run the vrs_bulk command in the foreground
 vrs_bulk annotate
 
 # run the vrs_bulk command in parallel, one process per VCF file
@@ -93,7 +93,7 @@ python3 -m ga4gh.vrs.extras.vcf_annotation --vcf_in tests/fixtures/1kGP.chr1.100
 The above is an example using an example vcf. Replace the `--vcf_out` and `vrs_pickle_out` here with your desired output file path, where the output vcf can be BCF (`vcf.gz`) or VCF (`vcf`)
 
 **Terra**
-The command line utility supports Google Cloud URIs and running commands in the background to interop with Terra out-of-the-box. This is described in the [CLI usage](#features) above. For an example notebook, see `vrs-anvil-demo.ipynb` on the `vrs-anvil` workspace.
+The command line utility supports Google Cloud URIs and running commands in the background to interop with Terra out-of-the-box. This is described in the [CLI usage](#Usage) above. For an example notebook, see `vrs-anvil-demo.ipynb` on the `vrs-anvil` workspace.
 
 ### Contributing
 
