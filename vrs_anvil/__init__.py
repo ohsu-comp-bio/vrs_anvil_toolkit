@@ -14,6 +14,7 @@ from ga4gh.vrs.extras.translator import AlleleTranslator
 from glom import glom
 from pydantic import BaseModel, model_validator
 import requests
+import yaml
 
 
 _logger = logging.getLogger("vrs_anvil")
@@ -339,3 +340,9 @@ def get_process_info(pid):
         return psutil.Process(pid)
     except psutil.NoSuchProcess:
         return None
+
+
+def save_manifest(manifest: Manifest, manifest_path: str):
+    """pass in a Manifest and yaml path"""
+    with open(manifest_path, "w") as stream:
+        yaml.dump(manifest.model_dump(), stream)

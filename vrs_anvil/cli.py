@@ -5,7 +5,12 @@ import click
 import yaml
 import logging
 
-from vrs_anvil import Manifest, run_command_in_background, get_process_info
+from vrs_anvil import (
+    Manifest,
+    run_command_in_background,
+    get_process_info,
+    save_manifest,
+)
 from vrs_anvil.annotator import annotate_all
 from logging.handlers import RotatingFileHandler
 import pathlib
@@ -77,7 +82,6 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
 
             if verbose:
                 click.secho(f"📢  {manifest}", fg="green")
-
     except Exception as exc:
         click.secho(f"{exc}", fg="yellow")
         ctx.ensure_object(dict)
@@ -96,13 +100,17 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
 def annotate_cli(ctx, scatter: bool):
     """Read manifest file, annotate variants, all parameters controlled by manifest.yaml."""
 
+    assert "manifest" in ctx.obj, "Manifest not found."
     timestamp_str = ctx.obj["timestamp_str"]
 
     if not scatter:
         try:
-            assert "manifest" in ctx.obj, "Manifest not found."
             manifest = ctx.obj["manifest"]
+            manifest_path = f"{manifest.work_directory}/manifest_{timestamp_str}.yaml"
+            save_manifest(manifest, manifest_path)
+            click.secho(f"🔑 Manifest saved at {manifest_path}", fg="yellow")
             _logger.debug(f"Manifest: {ctx.obj['manifest']}")
+
             click.secho("🚧  annotating variants", fg="yellow")
             metrics_file = annotate_all(
                 manifest, max_errors=ctx.obj["max_errors"], timestamp_str=timestamp_str
@@ -113,39 +121,44 @@ def annotate_cli(ctx, scatter: bool):
             _logger.exception(exc)
     else:
         try:
-
-            assert "manifest" in ctx.obj, "Manifest not found."
             parent_manifest = ctx.obj["manifest"]
             c = 0
             scattered_processes = []
             child_processes = []
-            for _ in parent_manifest.vcf_files:
-                # create a new manifest for each VCF file, based on the parent manifest, clone the parent manifest
+
+            for vcf_file in parent_manifest.vcf_files:
+                # create a new manifest for each VCF file based on the parent manifest
                 child_manifest = parent_manifest.copy(deep=True)
-                child_manifest.vcf_files = [_]
+                child_manifest.vcf_files = [vcf_file]
                 child_manifest.num_threads = 1
                 child_manifest.disable_progress_bars = True
+
                 child_manifest_path = (
                     pathlib.Path(child_manifest.work_directory)
                     / f"manifest_{timestamp_str}_{c}.yaml"
                 )
-                with open(child_manifest_path, "w") as stream:
-                    yaml.dump(child_manifest.model_dump(), stream)
-                child_process = run_command_in_background(
+                save_manifest(child_manifest, child_manifest_path)
+                click.secho(f"🔑 Manifest saved at {manifest_path}", fg="yellow")
+                _logger.debug(f"Manifest: {ctx.obj['manifest']}")
+
+                # run process to annotate each manifest
+                process = run_command_in_background(
                     f"vrs_anvil --manifest {child_manifest_path} annotate"
                 )
                 click.secho(
-                    f"🚧  annotating {_} on pid {child_process.pid}", fg="yellow"
+                    f"🚧  annotating {vcf_file} on pid {process.pid}", fg="yellow"
                 )
                 scattered_processes.append(
                     {
-                        "pid": child_process.pid,
+                        "pid": process.pid,
                         "manifest": str(child_manifest_path),
-                        "vcf": _,
+                        "vcf": vcf_file,
                     }
                 )
-                child_processes.append(child_process)
+                child_processes.append(process)
                 c += 1
+
+            # create yaml of scattered processes
             scattered_processes_path = (
                 pathlib.Path(parent_manifest.work_directory)
                 / f"scattered_processes_{timestamp_str}.yaml"
@@ -160,19 +173,21 @@ def annotate_cli(ctx, scatter: bool):
                 f"📊 scattered processes available in {scattered_processes_path}",
                 fg="green",
             )
+
+            # ensure all processes completed
             click.secho("🕒 waiting for processes to complete", fg="yellow")
             try:
-                for _ in child_processes:
-                    _.wait()
+                for process in child_processes:
+                    process.wait()
             except KeyboardInterrupt:
                 click.secho(
-                    "🚨  caught KeyboardInterrupt, terminating child processes",
+                    "🚨 caught KeyboardInterrupt, terminating child processes",
                     fg="red",
                 )
-                for _ in child_processes:
-                    _.terminate()
-                for _ in child_processes:
-                    _.wait()
+                for process in child_processes:
+                    process.terminate()
+                for process in child_processes:
+                    process.wait()
 
         except Exception as exc:
             click.secho(f"{exc}", fg="red")

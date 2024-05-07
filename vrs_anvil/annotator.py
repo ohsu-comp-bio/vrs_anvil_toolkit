@@ -171,7 +171,7 @@ def annotate_all(
                 # add vrs_id, allele_dict,actual evidence to this object as well (#3)
                 metrics[file_path][MATCHES][allele.id] = {
                     PARAMETERS: {"fmt": result.fmt, "var": result.var},
-                    VRS_OBJECT: allele.model_dump(exclude_none=True)
+                    VRS_OBJECT: allele.model_dump(exclude_none=True),
                 }
 
                 metrics[file_path][METAKB_HITS] += 1
