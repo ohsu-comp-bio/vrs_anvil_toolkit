@@ -56,14 +56,29 @@ In addition, this project facilitates the retrieval of evidence associated with 
    ```
 
 ### Usage
+**General**
+All usage has the following general steps...
+
+1. Create a manifest to configure your VCF processing run
+1. Use the `vrs_bulk` CLI to create a metrics file of related evidence
+1. Use the metrics files for downstream analysis
+
+The follow steps are explained in detail below, with some additional info on using vrs-python to directly annotate VCFs with VRS IDs.
+
 **Manifest**
 
-The configuration is controlled by a [manifest.yaml](tests/fixtures/manifest.yaml) file. This manifest file specifies the input VCF file(s), the output directory, and other configurations.
+The configuration of each VCF processing run run is controlled by a `manifest.yaml` file. Most importantly, this file specifies the...
+- input VCF file(s) to process
+- working directories
+- performance and strictness configurations
+
+Use this commented [sample manifest](tests/fixtures/manifest.yaml) as a starting point on the specific variables you can specify per run.
 
 **CLI**
+Below are a list of command line utilities that may be useful
 ```bash
+# activate the environment
 source venv/bin/activate
-# navigate to a working directory, with your manifest.yaml file.  Add the VCF urls or file paths to your manifest
 
 # run the vrs_bulk command in the foreground
 vrs_bulk annotate
@@ -74,13 +89,15 @@ vrs_bulk annotate --scatter
 # run the vrs_bulk command in parallel in the background
 nohup vrs_bulk annotate --scatter & # press enter to continue
 
-# get the status of the scatter processes
+# get the status of the processes for the most recent scatter run
 vrs_bulk ps
 ```
 
+The command line utility supports Google Cloud URIs and running commands in the background to interop with Terra out-of-the-box. This is described in the CLI usage above. For an example notebook, see `vrs-anvil-demo.ipynb` on the `vrs-anvil` workspace.
+
 **Processing VCF Files ([vrs-python](https://github.com/ga4gh/vrs-python))**
 
-vrs-python is a GA4GH GKS package centered around creating Variant Representation specification (VRS) IDs: consistent, globally unique identifiers for variation. Some of its functionality includes variant ID translation and VCF annotation. Used as a dependency in vrs_bulk, it can also be used as a standalone package.
+vrs-python is a GA4GH GKS package centered around creating Variant Representation specification (VRS) IDs: consistent, globally unique identifiers for variation. Some of its functionality includes variant ID translation and VCF annotation. Used as a dependency in `vrs_bulk`, it can also be used as a standalone package.
 
 For Python usage, see [vrs_vcf_annotator.py](scripts/vrs_vcf_annotator.py) for an example.
 
@@ -91,8 +108,6 @@ python3 -m ga4gh.vrs.extras.vcf_annotation --vcf_in tests/fixtures/1kGP.chr1.100
 
 The above is an example using an example vcf. Replace the `--vcf_out` and `vrs_pickle_out` here with your desired output file path, where the output vcf can be BCF (`vcf.gz`) or VCF (`vcf`)
 
-**Terra**
-The command line utility supports Google Cloud URIs and running commands in the background to interop with Terra out-of-the-box. This is described in the CLI usage above. For an example notebook, see `vrs-anvil-demo.ipynb` on the `vrs-anvil` workspace.
 
 ### Contributing
 
