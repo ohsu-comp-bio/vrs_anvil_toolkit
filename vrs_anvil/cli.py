@@ -200,64 +200,84 @@ def annotate_cli(ctx, scatter: bool):
             _logger.exception(exc)
 
 
+# TODO: allow user to pass in a particular timestamp?
 @cli.command("ps")
 @click.pass_context
 def ps_cli(ctx):
     """Show status of latest scatter command."""
+
     try:
         assert "manifest" in ctx.obj, "Manifest not found."
         parent_manifest = ctx.obj["manifest"]
+
+        # get most recent set of scattered manifests
+        file_prefix = "scattered_processes_"
+        filename_match = f"{file_prefix}*.yaml"
         scattered_processes_path = pathlib.Path(parent_manifest.work_directory)
         scattered_processes_paths = sorted(
-            x for x in scattered_processes_path.glob("scattered_processes_*.yaml")
+            x for x in scattered_processes_path.glob(filename_match)
         )
         if not scattered_processes_paths:
             click.secho(
-                f"🚧  no scattered processes found in {parent_manifest.work_directory}/scattered_processes_*.yaml",
+                f"🚧  no scattered processes found in {parent_manifest.work_directory}/{filename_match}",
                 fg="red",
             )
             return
+
+        # list associated info for each process
         scattered_processes_path = scattered_processes_paths[-1]
         state_dir = pathlib.Path(parent_manifest.state_directory)
         with open(scattered_processes_path, "r") as stream:
             scattered_processes = yaml.safe_load(stream)
-            for _ in scattered_processes["processes"]:
+            for process in scattered_processes["processes"]:
+                manifest_path = process["manifest"]
+                timestamp_str = (
+                    str(manifest_path).split("manifest_scattered_")[1].split(".")[0]
+                )
+
                 log_file = "NA"
                 metrics_file = "NA"
+
                 try:
-                    log_file = sorted(state_dir.glob(f"vrs_anvil*{_['pid']}.log"))[-1]
-                    metrics_file = sorted(state_dir.glob(f"metrics_*{_['pid']}.yaml"))[
+                    log_file = list(state_dir.glob(f"vrs_anvil_*{timestamp_str}.log"))[
                         -1
                     ]
-                except IndexError:
+                    metrics_file = list(
+                        state_dir.glob(f"metrics_*{timestamp_str}.yaml")
+                    )[-1]
+                except Exception:
                     pass
 
                 click.secho(
-                    f"🚧  pid: {str(_['pid'])}, manifest: {str(_['manifest'])}, vcf: {str(_['vcf'])}, metrics_file: {metrics_file}, log_file: {log_file}",
+                    f"🚧  pid: {str(process['pid'])}, manifest: {str(process['manifest'])}, vcf: {str(process['vcf'])}, metrics_file: {metrics_file}, log_file: {log_file}",
                     fg="yellow",
                 )
-                process = get_process_info(_["pid"])
-                if not process:
-                    # assert pathlib.Path(metrics_file).exists(), f"metrics file not found: {metrics_file}"
-                    # assert pathlib.Path(log_file).exists(), f"log file not found: {log_file}"
+                process_info = get_process_info(process["pid"])
+                if not process_info or metrics_file != "NA":
                     click.secho("  ✅  completed", fg="green")
                 else:
                     io_counters = "NA"
                     memory_info = "NA"
-                    if process.status() == "running":
+                    cpu_percent = "NA"
+
+                    status = process_info.status()
+                    if status == "running":
                         try:
-                            if hasattr(process, "io_counters"):
-                                io_counters = process.io_counters()
-                            if hasattr(process, "memory_info"):
-                                memory_info = process.memory_info()
+                            if hasattr(process_info, "io_counters"):
+                                io_counters = process_info.io_counters()
+                            if hasattr(process_info, "memory_info"):
+                                memory_info = process_info.memory_info()
+                            if hasattr(process_info, "cpu_percent"):
+                                cpu_percent = process_info.cpu_percent(interval=0.1)
                         except Exception as exc:
                             _logger.info(
-                                f"could not get io_counters/memory_info pid: {_['pid']} error:{exc}"
+                                f"could not get io_counters/memory_info pid: {process['pid']} error:{exc}"
                             )
-                    click.secho(
-                        f"  📊 {process.status()} cpu_percent: {process.cpu_percent(interval=0.1)}%, io_counters: {io_counters}, memory_info: {memory_info}",
-                        fg="yellow",
-                    )
+
+                        click.secho(
+                            f"  📊 {status.capitalize()}: cpu_percent: {cpu_percent}%, io_counters: {io_counters}, memory_info: {memory_info}",
+                            fg="yellow",
+                        )
     except Exception as exc:
         click.secho(f"{exc}", fg="red")
         _logger.exception(exc)
