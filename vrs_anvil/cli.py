@@ -31,15 +31,21 @@ _logger = logging.getLogger("vrs_anvil.cli")
 )
 @click.option("--verbose", default=False, help="Log more information", is_flag=True)
 @click.option("--max_errors", default=10, help="Number of acceptable errors.")
+@click.option(
+    "--suffix", default=None, help="Substitute timestamp with alternative file suffix"
+)
 @click.pass_context
-def cli(ctx, verbose: bool, manifest: str, max_errors: int):
+def cli(ctx, verbose: bool, manifest: str, max_errors: int, suffix: str):
     """GA4GH GKS utility for AnVIL."""
 
     _log_level = logging.INFO
     if verbose:
         _log_level = logging.DEBUG
 
-    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if suffix is not None:
+        timestamp_str = suffix
+    else:
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     try:
         with open(manifest, "r") as stream:
@@ -51,7 +57,7 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
                 # Create a rotating file handler with a max size of 10MB and keep 3 backup files
                 log_path = (
                     pathlib.Path(manifest.state_directory)
-                    / f"vrs_anvil_{timestamp_str}_{os.getpid()}.log"
+                    / f"vrs_anvil_{timestamp_str}.log"
                 )
                 file_handler = RotatingFileHandler(
                     log_path, maxBytes=10 * 1024 * 1024, backupCount=3
@@ -103,6 +109,7 @@ def annotate_cli(ctx, scatter: bool):
     assert "manifest" in ctx.obj, "Manifest not found."
     timestamp_str = ctx.obj["timestamp_str"]
 
+    # normal run with single process
     if not scatter:
         try:
             manifest = ctx.obj["manifest"]
@@ -119,31 +126,31 @@ def annotate_cli(ctx, scatter: bool):
         except Exception as exc:
             click.secho(f"{exc}", fg="red")
             _logger.exception(exc)
-    else:
+    else:  # scattered processes / multiprocessing
         try:
             parent_manifest = ctx.obj["manifest"]
-            c = 0
             scattered_processes = []
             child_processes = []
 
-            for vcf_file in parent_manifest.vcf_files:
+            for i, vcf_file in enumerate(parent_manifest.vcf_files):
                 # create a new manifest for each VCF file based on the parent manifest
                 child_manifest = parent_manifest.copy(deep=True)
                 child_manifest.vcf_files = [vcf_file]
                 child_manifest.num_threads = 1
                 child_manifest.disable_progress_bars = True
 
+                suffix_str = f"scattered_{timestamp_str}_{i}"
                 child_manifest_path = (
                     pathlib.Path(child_manifest.work_directory)
-                    / f"manifest_{timestamp_str}_{c}.yaml"
+                    / f"manifest_{suffix_str}.yaml"
                 )
                 save_manifest(child_manifest, child_manifest_path)
-                click.secho(f"🔑 Manifest saved at {manifest_path}", fg="yellow")
+                click.secho(f"🔑 Manifest saved at {child_manifest_path}", fg="yellow")
                 _logger.debug(f"Manifest: {ctx.obj['manifest']}")
 
                 # run process to annotate each manifest
                 process = run_command_in_background(
-                    f"vrs_anvil --manifest {child_manifest_path} annotate"
+                    f"vrs_bulk --manifest {child_manifest_path} --suffix {suffix_str} annotate"
                 )
                 click.secho(
                     f"🚧  annotating {vcf_file} on pid {process.pid}", fg="yellow"
@@ -156,9 +163,8 @@ def annotate_cli(ctx, scatter: bool):
                     }
                 )
                 child_processes.append(process)
-                c += 1
 
-            # create yaml of scattered processes
+            # associate scattered processes to process id in yaml
             scattered_processes_path = (
                 pathlib.Path(parent_manifest.work_directory)
                 / f"scattered_processes_{timestamp_str}.yaml"
