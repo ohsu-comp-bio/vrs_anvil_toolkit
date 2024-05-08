@@ -31,6 +31,7 @@ END_TIME = "end_time"
 ELAPSED_TIME = "elapsed_time"
 LINE_COUNT = "line_count"
 VRS_OBJECT = "vrs_object"
+TIMESTAMP = "timestamp_str"
 
 
 def recursive_defaultdict():
@@ -177,7 +178,7 @@ def annotate_all(
 
     _logger.info("annotate_all: Finished processing results.")
 
-    metrics[TOTAL]["timestamp_str"] = timestamp_str
+    metrics[TOTAL][TIMESTAMP] = timestamp_str
     metrics[TOTAL][END_TIME] = time.time()
     metrics[TOTAL][ELAPSED_TIME] = metrics[TOTAL][END_TIME] - metrics[TOTAL][START_TIME]
     metrics[TOTAL][SUCCESSES] = sum(
