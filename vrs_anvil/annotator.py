@@ -137,7 +137,8 @@ def annotate_all(
     _logger.info("annotate_all: Starting.")
     vrs_anvil.manifest = manifest
     metakb_proxy = vrs_anvil.MetaKBProxy(
-        metakb_path=pathlib.Path(manifest.metakb_directory)
+        metakb_path=pathlib.Path(manifest.metakb_directory),
+        cache_directory=pathlib.Path(manifest.cache_directory)
     )
     _logger.info("annotate_all: completed metakb init.")
 
