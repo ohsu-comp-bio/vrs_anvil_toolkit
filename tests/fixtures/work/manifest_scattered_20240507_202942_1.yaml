@@ -1,0 +1,15 @@
+annotate_vcfs: false
+cache_directory: test-cache
+cache_enabled: false
+compute_for_ref: false
+disable_progress_bars: true
+estimated_vcf_lines: 4000000
+limit: 30000
+metakb_directory: ../tests/fixtures/metakb
+normalize: false
+num_threads: 1
+seqrepo_directory: /Users/wongq/seqrepo/latest
+state_directory: state
+vcf_files:
+- /Users/wongq/projects/vrs_anvil_toolkit/tests/fixtures/1kGP.chr1.1000.vcf
+work_directory: work

@@ -1,0 +1,24 @@
+# Path to the cache directory, defaults to cache/ (relative to the root of the repository)
+cache_directory: "test/fixtures/cache/"
+
+# Number of works to use for processing, defaults to 20
+num_threads: 4
+
+# Should we create new VCFs with annotations. FOR FUTURE USE
+# annotate_vcfs: false
+
+# where to store the state of the application, log files, etc.
+state_directory: "tests/fixtures/state/"
+
+# where to store temporary files, etc.
+work_directory: "tests/fixtures/work/"
+
+# The local file paths or URLs to vcf files to be processed
+vcf_files:
+  - "tests/fixtures/1kGP.chr1.1000.vcf"
+
+seqrepo_directory: "~/seqrepo/latest"
+
+normalize: false
+
+metakb_directory: "tests/fixtures/metakb"

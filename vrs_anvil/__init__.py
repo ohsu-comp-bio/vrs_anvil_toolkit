@@ -57,7 +57,9 @@ class CachingAlleleTranslator(AlleleTranslator):
         self._cache = None
         if manifest and manifest.cache_enabled:
             self._cache = Cache(
-                directory=get_cache_directory(manifest.cache_directory, "allele_translator"),
+                directory=get_cache_directory(
+                    manifest.cache_directory, "allele_translator"
+                ),
                 size_limit=cache_size_limit,
             )
         else:

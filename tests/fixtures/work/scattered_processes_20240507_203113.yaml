@@ -1,0 +1,8 @@
+parent_pid: 4412
+processes:
+- manifest: work/manifest_scattered_20240507_203113_0.yaml
+  pid: 4420
+  vcf: /Users/wongq/projects/ohsu/misc-data/vcf/1kGP_high_coverage_Illumina.chr2.filtered.SNV_INDEL_SV_phased_panel.vcf.gz
+- manifest: work/manifest_scattered_20240507_203113_1.yaml
+  pid: 4421
+  vcf: /Users/wongq/projects/vrs_anvil_toolkit/tests/fixtures/1kGP.chr1.1000.vcf

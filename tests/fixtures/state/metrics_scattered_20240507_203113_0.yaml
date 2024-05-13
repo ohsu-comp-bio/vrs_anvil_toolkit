@@ -1,0 +1,16 @@
+total:
+  elapsed_time: 12.456475973129272
+  end_time: 1715139087.813086
+  errors: 0
+  start_time: 1715139075.35661
+  successes: 29919
+  timestamp_str: scattered_20240507_203113_0
+work/1kGP_high_coverage_Illumina.chr2.filtered.SNV_INDEL_SV_phased_panel.vcf.gz:
+  elapsed_time: 12.4459068775177
+  end_time: 1715139087.812854
+  errors: {}
+  line_count: 30001
+  metakb_hits: 0
+  start_time: 1715139075.3669472
+  status: finished
+  successes: 29919

@@ -29,7 +29,6 @@ def manifest_path() -> pathlib.Path:
 # note that tmp_path is a fixture provided by pytest
 @pytest.fixture
 def testing_manifest(manifest_path: pathlib.Path, tmp_path) -> Manifest:
-    """Set the testing manifest for this run."""
     with open(manifest_path, "r") as stream:
         manifest_dict = yaml.safe_load(stream)
 

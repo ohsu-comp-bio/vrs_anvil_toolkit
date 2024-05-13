@@ -213,6 +213,7 @@ def ps_cli(ctx):
         # get most recent set of scattered manifests
         file_prefix = "scattered_processes_"
         filename_match = f"{file_prefix}*.yaml"
+
         scattered_processes_path = pathlib.Path(parent_manifest.work_directory)
         scattered_processes_paths = sorted(
             x for x in scattered_processes_path.glob(filename_match)
@@ -223,9 +224,9 @@ def ps_cli(ctx):
                 fg="red",
             )
             return
+        scattered_processes_path = scattered_processes_paths[-1]
 
         # list associated info for each process
-        scattered_processes_path = scattered_processes_paths[-1]
         state_dir = pathlib.Path(parent_manifest.state_directory)
         with open(scattered_processes_path, "r") as stream:
             scattered_processes = yaml.safe_load(stream)
