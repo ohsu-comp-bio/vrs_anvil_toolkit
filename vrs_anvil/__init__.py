@@ -43,7 +43,7 @@ def seqrepo_dir():
 
 def get_cache_directory(cache_dir: str, cache_name: str) -> str:
     """Return the cache directory."""
-    return str(Path(manifest.cache_directory) / cache_name)
+    return str(Path(cache_dir) / cache_name)
 
 
 class CachingAlleleTranslator(AlleleTranslator):
@@ -164,16 +164,16 @@ class MetaKBProxy(BaseModel):
     """A proxy for the MetaKB, maintains a cache of VRS ids."""
 
     metakb_path: Path
-    cache_directory: Path
+    cache_path: Path
     _cache: Optional[Cache] = None
 
-    def __init__(self, metakb_path: Path, cache_directory: Path, cache: Cache = None):
-        super().__init__(metakb_path=metakb_path, cache_directory=cache_directory, _cache=cache)
+    def __init__(self, metakb_path: Path, cache_path: Path, cache: Cache = None):
+        super().__init__(metakb_path=metakb_path, cache_path=cache_path, _cache=cache)
         if cache is None:
             reload_cache = False
             if not (metakb_path / "cache").is_dir():
                 reload_cache = True
-            cache = Cache(directory=get_cache_directory(cache_directory, "metakb"))
+            cache = Cache(directory=get_cache_directory(cache_path, "metakb"))
             # cache.stats(enable=True) # drives up disk usage
             if reload_cache:
                 for _ in metakb_ids(metakb_path):

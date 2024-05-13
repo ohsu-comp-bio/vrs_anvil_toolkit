@@ -22,17 +22,16 @@ def expected_vrs_ids():
 def test_metakb_ids(
     metakb_directory, testing_manifest, expected_vrs_id_count, expected_vrs_ids
 ):
-    # TODO: doesn't work with calling pytest tests/unit/test_metakb
-    # as it cannot find the manifest
     """Test metakb ids."""
     vrs_ids = [vrs_id for vrs_id in metakb_ids(metakb_directory)]
     vrs_count = len(vrs_ids)
     assert (
         vrs_count >= expected_vrs_id_count
     ), f"Not enough VRS ids found in metakb {vrs_count} {vrs_ids}"
+
     metakb_proxy = MetaKBProxy(
         metakb_path=pathlib.Path(metakb_directory),
-        cache_directory=pathlib.Path(testing_manifest.cache_directory),
+        cache_path=pathlib.Path(testing_manifest.cache_directory),
     )
 
     for id in vrs_ids:
