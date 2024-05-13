@@ -2,6 +2,7 @@ def validate_threaded_result(result, errors, validate_passthrough=False):
     """Test helper, a utility method to validate threaded lookup result."""
     assert result is not None, "result_dict is None"
     from vrs_anvil.translator import VCFItem
+
     assert isinstance(result, VCFItem), "result_dict is not a dict"
     allele = result.result
     if isinstance(allele, dict):
@@ -17,5 +18,5 @@ def validate_threaded_result(result, errors, validate_passthrough=False):
     for k in ["file_name", "line_number"]:
         if validate_passthrough:
             assert (
-                    getattr(result, k) is not None
+                getattr(result, k) is not None
             ), f"metrics tracking from caller {k} is None"
