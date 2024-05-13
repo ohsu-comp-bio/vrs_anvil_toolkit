@@ -285,7 +285,12 @@ def test_threading(translator, num_threads):
         line_number = 1
         for _ in range(times):
             for _sequence in sequence:
-                yield VCFItem(**_sequence, file_name="test", line_number=line_number, identifier=None)
+                yield VCFItem(
+                    **_sequence,
+                    file_name="test",
+                    line_number=line_number,
+                    identifier=None,
+                )
                 line_number += 1
 
     c = 0  # count of results
