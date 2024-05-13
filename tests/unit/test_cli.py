@@ -4,7 +4,7 @@ from vrs_anvil import Manifest
 from vrs_anvil.cli import cli
 
 
-def test_version():
+def test_cli_version():
     """Ensure version printed"""
     runner = CliRunner()
     result = runner.invoke(cli, "--version".split())
@@ -16,10 +16,11 @@ def test_version():
         ), f"Should have printed {expected_string}"
 
 
-def test_manifest(testing_manifest_path):
+def test_loading_manifest(manifest_path):
     """Ensure manifest parsed and stored in context"""
     runner = CliRunner()
-    result = runner.invoke(cli, f"--manifest {testing_manifest_path} --verbose".split())
+    print(manifest_path)
+    result = runner.invoke(cli, f"--manifest {manifest_path} --verbose".split())
     expected_strings = Manifest.model_fields.keys()
     print(result.output)
     for expected_string in expected_strings:
