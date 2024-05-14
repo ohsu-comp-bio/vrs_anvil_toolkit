@@ -71,10 +71,10 @@ def test_ps_returns_recent_files(recent_timestamp, num_vcfs):
 
     # make function call
     runner = CliRunner()
-    os.chdir("tests/fixtures/")
+    os.chdir("tests/fixtures/ps")
 
     try:
-        result = runner.invoke(cli, "--manifest manifest_ps.yaml ps")
+        result = runner.invoke(cli, "--manifest manifest.yaml ps")
         print(result.output)
 
         # check successful command and loaded most recent process file
@@ -94,4 +94,4 @@ def test_ps_returns_recent_files(recent_timestamp, num_vcfs):
                 f"metrics_scattered_{recent_timestamp}_{i}.yaml" in result.output
             ), f"metrics file #{i} of {num_vcfs} not found"
     finally:
-        os.chdir("../..")
+        os.chdir("../../..")

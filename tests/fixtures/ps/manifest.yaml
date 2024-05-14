@@ -21,4 +21,4 @@ seqrepo_directory: "~/seqrepo/latest"
 
 normalize: false
 
-metakb_directory: "metakb"
+metakb_directory: "../metakb"
