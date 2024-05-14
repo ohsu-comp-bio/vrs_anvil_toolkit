@@ -32,7 +32,7 @@ _logger = logging.getLogger("vrs_anvil.cli")
 @click.option("--verbose", default=False, help="Log more information", is_flag=True)
 @click.option("--max_errors", default=10, help="Number of acceptable errors.")
 @click.option(
-    "--suffix", default=None, help="Substitute timestamp with alternative file suffix"
+    "--suffix", default=None, help="Substitute timestamp with alternate file suffix"
 )
 @click.pass_context
 def cli(ctx, verbose: bool, manifest: str, max_errors: int, suffix: str):
@@ -122,6 +122,7 @@ def annotate_cli(ctx, scatter: bool):
             metrics_file = annotate_all(
                 manifest, max_errors=ctx.obj["max_errors"], timestamp_str=timestamp_str
             )
+            print("metrics_file:", metrics_file)
             click.secho(f"📊  metrics available in {metrics_file}", fg="green")
         except Exception as exc:
             click.secho(f"{exc}", fg="red")

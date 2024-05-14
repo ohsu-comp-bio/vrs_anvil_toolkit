@@ -26,6 +26,11 @@ def num_vcfs(testing_manifest):
     return len(testing_manifest.vcf_files)
 
 
+@pytest.fixture
+def suffix():
+    return "arbitrary_suffix"
+
+
 def test_cli_version():
     """Test that version can be called and printed"""
     runner = CliRunner()
@@ -48,6 +53,17 @@ def test_loading_manifest(manifest_path):
         assert (
             expected_string in result.output
         ), f"Should have printed {expected_string}"
+
+
+def test_using_suffix(manifest_path, suffix):
+    """Test that the suffix is successfully added to the manifest string"""
+    runner = CliRunner()
+    result = runner.invoke(
+        cli, f"--manifest {manifest_path} --suffix {suffix} annotate"
+    )
+
+    print(result.output)
+    assert suffix in result.output, f"Should have printed {suffix}"
 
 
 # def test_annotate_scatter(manifest_path, testing_manifest):
