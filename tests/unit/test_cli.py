@@ -1,3 +1,4 @@
+import os
 import pytest
 
 from click.testing import CliRunner
@@ -11,8 +12,18 @@ def recent_timestamp():
 
 
 @pytest.fixture
+def scatter_path():
+    return "tests/fixtures/scatter/"
+
+
+@pytest.fixture
 def manifest_path_ps():
     return "tests/fixtures/manifest_ps.yaml"
+
+
+@pytest.fixture
+def num_vcfs(testing_manifest):
+    return len(testing_manifest.vcf_files)
 
 
 def test_cli_version():
@@ -39,28 +50,48 @@ def test_loading_manifest(manifest_path):
         ), f"Should have printed {expected_string}"
 
 
-def test_ps_returns_recent_info(recent_timestamp, manifest_path_ps):
+# def test_annotate_scatter(manifest_path, testing_manifest):
+#     """Test that manifest outputs the right files"""
+#     # run the command
+#     manifest = testing_manifest
+#     runner = CliRunner()
+#     with runner.isolated_filesystem() as test_dir:
+#         shutil.copy(manifest_path, test_dir)
+#         result = runner.invoke(cli, f"--manifest f{manifest_path}/{test_dir} annotate --scatter")
+
+#     # assert metrics in
+
+#     print(result.output)
+
+#     # assert()
+
+
+def test_ps_returns_recent_files(recent_timestamp, num_vcfs):
     """Test that vrs_anvil ps returns the most recent scatter command"""
 
     # make function call
     runner = CliRunner()
-    result = runner.invoke(cli, f"--manifest {manifest_path_ps} ps")
-    print(result.output)
+    os.chdir("tests/fixtures/")
 
-    # check successful command and loaded most recent process file
-    assert result.exit_code == 0, f"result failed with message: \n{result}"
-    assert (
-        "no scattered processes" not in result.output
-    ), "no scattered processes located"
-    assert recent_timestamp in result.output, "most recent date has not been chosen"
+    try:
+        result = runner.invoke(cli, "--manifest manifest_ps.yaml ps")
+        print(result.output)
 
-    # check metrics and manifest files located
-    expected_num_processes = 0
-    for i in range(expected_num_processes):
+        # check successful command and loaded most recent process file
+        assert result.exit_code == 0, f"result failed with message: \n{result}"
         assert (
-            f"manifest_scattered_{recent_timestamp}_{i}.yaml" in result.output
-        ), f"{i}th {expected_num_processes} manifest not found"
+            "no scattered processes" not in result.output
+        ), "no scattered processes located"
+        assert recent_timestamp in result.output, "most recent date has not been chosen"
 
-        assert (
-            f"metrics_scattered_{recent_timestamp}_{i}.yaml" in result.output
-        ), f"{i}th {expected_num_processes} metrics files not found"
+        # check metrics and manifest files located
+        for i in range(num_vcfs):
+            assert (
+                f"manifest_scattered_{recent_timestamp}_{i}.yaml" in result.output
+            ), f"manifest #{i} of {num_vcfs} not found"
+
+            assert (
+                f"metrics_scattered_{recent_timestamp}_{i}.yaml" in result.output
+            ), f"metrics file #{i} of {num_vcfs} not found"
+    finally:
+        os.chdir("../..")

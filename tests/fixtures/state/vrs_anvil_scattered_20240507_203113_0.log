@@ -1,0 +1,15 @@
+2024-05-07 20:31:13,641 MainThread vrs_anvil.annotator [INFO] annotate_all: Starting.
+2024-05-07 20:31:15,356 MainThread vrs_anvil.annotator [INFO] annotate_all: completed metakb init.
+2024-05-07 20:31:15,365 MainThread biocommons.seqrepo.fastadir.fastadir [INFO] File descriptor caching disabled
+2024-05-07 20:31:15,366 MainThread vrs_anvil [INFO] Cache is not enabled
+2024-05-07 20:31:15,367 MainThread vrs_anvil [ERROR] Invalid alt found: <DEL>
+2024-05-07 20:31:15,581 MainThread vrs_anvil [ERROR] Invalid alt found: <DUP>
+2024-05-07 20:31:15,982 MainThread vrs_anvil [ERROR] Invalid alt found: <INS>
+2024-05-07 20:31:17,955 MainThread vrs_anvil [ERROR] Invalid alt found: <INS:ME:ALU>
+2024-05-07 20:31:27,812 MainThread vrs_anvil.annotator [INFO] Limit of 30000 reached, stopping
+2024-05-07 20:31:27,812 MainThread vrs_anvil.annotator [INFO] Setting metrics for work/1kGP_high_coverage_Illumina.chr2.filtered.SNV_INDEL_SV_phased_panel.vcf.gz
+2024-05-07 20:31:27,812 MainThread vrs_anvil.annotator [INFO] _vcf_generator: Finished processing all files in the manifest 30001 lines processed.
+2024-05-07 20:31:27,813 MainThread vrs_anvil.annotator [INFO] _vrs_generator: Finished processing all vrs results in the manifest 29919 results processed.
+2024-05-07 20:31:27,813 MainThread vrs_anvil.annotator [INFO] annotate_all: Finished processing results.
+2024-05-07 20:31:27,813 MainThread vrs_anvil.annotator [INFO] annotate_all: Finished calculating metrics.
+2024-05-07 20:31:27,814 MainThread vrs_anvil.annotator [INFO] annotate_all: Finished writing metrics.

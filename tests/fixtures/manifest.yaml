@@ -1,10 +1,19 @@
 #############
 # VCF FILES #
 #############
+# Number of works to use for processing, defaults to 20
+num_threads: 4
 
-# Can be local file paths (absolute path) or gcloud URLs
+# Should we create new VCFs with annotations. FOR FUTURE USE
+# annotate_vcfs: false
+
+# add limit
+limit: 100
+
+# The local file paths or URLs to vcf files to be processed
 vcf_files:
   - "tests/fixtures/1kGP.chr1.1000.vcf"
+ - "tests/fixtures/1kGP.chr1.1000.copy.vcf"
 
 ###############
 # DIRECTORIES #
