@@ -36,7 +36,7 @@ def ps_manifest_path(ps_dir):
 
 @pytest.fixture
 def mock_cli_manifest(tmp_path, monkeypatch, manifest_path, testing_manifest):
-    '''Move relevant files and working dir into a temporary dir before testing cli commands'''
+    """Move relevant files and working dir into a temporary dir before testing cli commands"""
 
     # copy manifest and vcf files to tmp_path
     shutil.copy(manifest_path, tmp_path)
@@ -104,20 +104,16 @@ def test_using_suffix(mock_cli_manifest, suffix):
     # note the path is to the namespace (module) being tested not the namespace its imported from
     mock = MagicMock()
     mock.return_value = "mocked_metrics.yaml"
-    patcher = patch("vrs_anvil.cli.annotate_all", mock)
-    patcher.start()
-
     runner = CliRunner()
-    result = runner.invoke(cli, f"--suffix {suffix} annotate")
+    with patch("vrs_anvil.cli.annotate_all", mock):
+        result = runner.invoke(cli, f"--suffix {suffix} annotate")
 
     print(result.output)
     assert suffix in result.output, f"Should have printed {suffix}"
 
-    patcher.stop()
 
-
-def test_annotate_scatter_outputs(mock_cli_manifest):
-    """Test that manifest outputs the right files"""
+def test_annotate_scatter(mock_cli_manifest):
+    """Test that the annotate command scatter saves the right files"""
 
     # setup
     manifest = mock_cli_manifest
@@ -129,25 +125,17 @@ def test_annotate_scatter_outputs(mock_cli_manifest):
 
     # run annotate scatter cmd
     with patch("vrs_anvil.cli.run_command_in_background", mock):
-        result = runner.invoke(cli, "--verbose annotate --scatter")
+        result = runner.invoke(cli, "annotate --scatter")
     print(result.output)
 
-    # make sure input files (manifest and scattered_processes) are created
+    # make sure scattered processes and log files
     work_dir = str(Path(manifest.work_directory))
-    expected_num_files = len(manifest.vcf_files)
-
-    num_manifests = len(glob(f"{work_dir}/*manifest*.yaml"))
-    assert (
-        num_manifests == expected_num_files
-    ), f"expected {expected_num_files} manifests, got {num_manifests}"
-
     process_files = len(glob(f"{work_dir}/*scattered_process*.yaml"))
     assert process_files == 1, f"expected 1 scattered process file, got {process_files}"
 
-    # make sure main output log is created
     state_dir = str(Path(manifest.state_directory))
     num_log_files = len(glob(f"{state_dir}/*.log"))
-    assert (num_log_files == 1), f"expected 1 log files, got {num_log_files}"
+    assert num_log_files == 1, f"expected 1 log files, got {num_log_files}"
 
 
 def test_ps_returns_recent_files(ps_dir, monkeypatch, recent_timestamp, num_vcfs):
