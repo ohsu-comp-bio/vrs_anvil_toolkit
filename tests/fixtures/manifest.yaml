@@ -7,8 +7,8 @@ num_threads: 4
 # Should we create new VCFs with annotations. FOR FUTURE USE
 # annotate_vcfs: false
 
-# add limit
-limit: 100
+# # add limit
+# limit: 100
 
 # The local file paths or URLs to vcf files to be processed
 vcf_files:

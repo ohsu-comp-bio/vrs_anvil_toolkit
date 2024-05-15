@@ -122,7 +122,6 @@ def annotate_cli(ctx, scatter: bool):
             metrics_file = annotate_all(
                 manifest, max_errors=ctx.obj["max_errors"], timestamp_str=timestamp_str
             )
-            print("metrics_file:", metrics_file)
             click.secho(f"📊  metrics available in {metrics_file}", fg="green")
         except Exception as exc:
             click.secho(f"{exc}", fg="red")
@@ -196,6 +195,7 @@ def annotate_cli(ctx, scatter: bool):
                 for process in child_processes:
                     process.wait()
 
+            click.secho("✅  all processes completed", fg="green")
         except Exception as exc:
             click.secho(f"{exc}", fg="red")
             _logger.exception(exc)

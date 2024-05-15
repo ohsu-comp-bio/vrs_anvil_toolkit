@@ -14,16 +14,9 @@ _logger.setLevel(logging.DEBUG)
 @pytest.fixture
 def manifest_path() -> pathlib.Path:
     """Return a path to a manifest file."""
-    _ = pathlib.Path("tests/fixtures/manifest.yaml").resolve()
-    assert _.exists()
-    return _
-
-
-# @pytest.fixture(autouse=True)
-# def change_test_dir(monkeypatch, tmp_path):
-#     """Change to a temporary directory for testing."""
-#     # see https://stackoverflow.com/questions/62044541/change-pytest-working-directory-to-test-case-directory
-#     monkeypatch.chdir(tmp_path)
+    path = pathlib.Path("tests/fixtures/manifest.yaml").resolve()
+    assert path.exists()
+    return path
 
 
 # note that tmp_path is a fixture provided by pytest
@@ -33,6 +26,7 @@ def testing_manifest(manifest_path: pathlib.Path, tmp_path) -> Manifest:
         manifest_dict = yaml.safe_load(stream)
 
         # use pytest-provided relative path
+        # note that metakb_directory is omitted to refer to original cdms
         for dir_key in ["work_directory", "cache_directory", "state_directory"]:
             manifest_dict[dir_key] = str(tmp_path / manifest_dict[dir_key])
 
