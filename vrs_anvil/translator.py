@@ -30,9 +30,9 @@ class WorkerThread(threading.Thread):
                     break  # Signal to exit the thread
 
                 self.busy = True
-                allele = self.translator.translate_from(fmt=item.fmt, var=item.var)
+                allele_id = self.translator.translate_from(fmt=item.fmt, var=item.var)
                 _ = item._asdict()
-                _["result"] = allele
+                _["result"] = allele_id
                 result = VCFItem(**_)
                 self.result_queue.put(PrioritizedItem(1, result))
 
@@ -90,9 +90,9 @@ def inline_translator(
     """A generator that runs the translation in a non-threaded fashion."""
     tlr = caching_allele_translator_factory(normalize=normalize)
     for item in generator:
-        allele = tlr.translate_from(fmt=item.fmt, var=item.var)
+        allele_id = tlr.translate_from(fmt=item.fmt, var=item.var)
         _ = item._asdict()
-        _["result"] = allele
+        _["result"] = allele_id
         yield VCFItem(**_)
 
 

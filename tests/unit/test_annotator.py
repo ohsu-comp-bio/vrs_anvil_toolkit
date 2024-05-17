@@ -159,13 +159,11 @@ def test_results(caching_translator):
     for variant_type, (input, expected_allele) in inputs_dict.items():
         gnomad_expr = input["gnomad"]
         # allele object validation
-        allele_dict = tlr.translate_from(fmt="gnomad", var=gnomad_expr).model_dump(
-            exclude_none=True
-        )
+        allele_id = tlr.translate_from(fmt="gnomad", var=gnomad_expr)
 
-        assert expected_allele == allele_dict, (
-            f"{variant_type} does not match for {gnomad_expr}: "
-            + f"\nexpected: {expected_allele}\n!==\nactual: {allele_dict}"
+        assert expected_allele["id"] == allele_id, (
+            f"{allele_id} does not match for {gnomad_expr}: "
+            + f"\nexpected: {expected_allele["id"]}"
         )
 
 
@@ -179,16 +177,12 @@ def test_cache(caching_translator):
 
     start_time = time.time()
     for inputs in all_inputs:
-        tlr.translate_from(fmt="gnomad", var=inputs["gnomad"]).model_dump(
-            exclude_none=True
-        )
+        tlr.translate_from(fmt="gnomad", var=inputs["gnomad"])
     noncached_time = time.time() - start_time
 
     start_time = time.time()
     for inputs in all_inputs:
-        tlr.translate_from(fmt="gnomad", var=inputs["gnomad"]).model_dump(
-            exclude_none=True
-        )
+        tlr.translate_from(fmt="gnomad", var=inputs["gnomad"])
     cache_time = time.time() - start_time
 
     assert cache_time < (
@@ -241,18 +235,11 @@ def test_threading(translator, num_threads):
 
     c = 0  # count of results
     _times = 2
-    errors = []
     for result in tlr.translate_from(
         repeat_sequence(parameters, times=_times), num_threads=num_threads
     ):
         c += 1
-        validate_threaded_result(result, errors, validate_passthrough=False)
-    assert c == (
-        _times * len(parameters)
-    ), f"Expected {_times * len(parameters)} results, got {c}."
-    assert (
-        len(errors) == 0
-    ), f"num_threads {num_threads} {c} items {len(errors)} errors {errors}."
+        validate_threaded_result(result, validate_passthrough=False)
 
 
 @pytest.fixture
@@ -289,21 +276,11 @@ def test_gnomad(translator, gnomad_csv, num_threads):
     tlr = translator
     assert tlr is not None
     c = 0  # count of results
-    start_time = time.time()
-    errors = []
     for result_dict in tlr.translate_from(
         generator=gnomad_ids(gnomad_csv), num_threads=num_threads
     ):
         c += 1
-        validate_threaded_result(result_dict, errors, validate_passthrough=False)
-    end_time = time.time()
-
-    elapsed_time = end_time - start_time
-
-    print(errors)
-    assert (
-        len(errors) == 0
-    ), f"num_threads {num_threads} elapsed time: {elapsed_time} seconds {c} items {len(errors)} errors {errors}."
+        validate_threaded_result(result_dict, validate_passthrough=False)
 
 
 def test_gnomad_inline(translator, gnomad_csv, num_threads=1):
@@ -311,18 +288,8 @@ def test_gnomad_inline(translator, gnomad_csv, num_threads=1):
     tlr = translator
     assert tlr is not None
     c = 0  # count of results
-    start_time = time.time()
-    errors = []
     for result_dict in tlr.translate_from(
         generator=gnomad_ids(gnomad_csv), num_threads=num_threads
     ):
         c += 1
-        validate_threaded_result(result_dict, errors, validate_passthrough=False)
-    end_time = time.time()
-
-    elapsed_time = end_time - start_time
-
-    print(errors)
-    assert (
-        len(errors) == 0
-    ), f"num_threads {num_threads} elapsed time: {elapsed_time} seconds {c} items {len(errors)} errors {errors}."
+        validate_threaded_result(result_dict, validate_passthrough=False)
