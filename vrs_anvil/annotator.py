@@ -164,7 +164,7 @@ def annotate_all(
             metrics[file_path][SUCCESSES] += 1
 
             # check metaKB cache, TODO - it would be nice if we had the metakb.study.id and added that to result_dict
-            if any([metakb_proxy.get(_) for _ in allele_id]):
+            if metakb_proxy.get(allele_id):
                 _logger.info(f"VRS id {allele_id} found in metakb. {result}")
 
                 # add vrs_id, allele_dict, actual evidence to this object as well (#3)
