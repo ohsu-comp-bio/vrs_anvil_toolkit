@@ -1,24 +1,51 @@
-# Path to the cache directory, defaults to cache/ (relative to the root of the repository)
-cache_directory: "cache/"
+#############
+# VCF FILES #
+#############
 
-# Number of works to use for processing, defaults to 20
-num_threads: 4
-
-# Should we create new VCFs with annotations. FOR FUTURE USE
-# annotate_vcfs: false
-
-# where to store the state of the application, log files, etc.
-state_directory: "state/"
-
-# where to store temporary files, etc.
-work_directory: "work/"
-
-# The local file paths or URLs to vcf files to be processed
+# Can be local file paths (absolute path) or gcloud URLs
 vcf_files:
   - "tests/fixtures/1kGP.chr1.1000.vcf"
 
+###############
+# DIRECTORIES #
+###############
+
+# where to store output like log files and metrics files
+state_directory: "state/"
+
+# where to store input data like VCF files and a copy of the manifest used
+work_directory: "work/"
+
+# Stores the vrs_id and metakb cache if cache_enabled (defaults to cache/)
+cache_directory: "cache/"
+
+# installation path for seqrepo (reference sequences)
 seqrepo_directory: "~/seqrepo/latest"
 
+# where to find JSON evidence files
+metakb_directory: "tests/fixtures/metakb"
+
+#################
+# CONFIGURATION #
+#################
+
+# Number of threads to use for processing, defaults to 2
+num_threads: 2
+
+# Control if cache is used
+cache_enabled: false
+
+# max lines from a vcf file (optional)
+# limit: 30000
+
+# normalize the VRS ids
 normalize: false
 
-metakb_directory: "tests/fixtures/metakb"
+# compute VRS IDs for the reference allele as well as the alt
+compute_for_ref: false
+
+# used as the max for progress bars
+estimated_vcf_lines: 4000000
+
+# whether to disable progress bars pro
+disable_progress_bars: False

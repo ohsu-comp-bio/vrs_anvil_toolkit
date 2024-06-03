@@ -244,9 +244,10 @@ class Manifest(BaseModel):
     cache_directory: str = "cache/"
     """Path to the cache directory, defaults to cache/ (relative to the root of the repository)"""
 
-    num_threads: int = 20
-    """Number of works to use for processing, defaults to 20"""
+    num_threads: int = 2
+    """Number of threads to use for processing, defaults to 2"""
 
+    # TODO: not implemented
     annotate_vcfs: bool = False
     """Should we create new VCFs with annotations. FOR FUTURE USE"""
 
