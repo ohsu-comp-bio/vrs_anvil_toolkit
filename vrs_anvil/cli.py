@@ -22,7 +22,7 @@ _logger = logging.getLogger("vrs_anvil.cli")
 
 
 @click.group(invoke_without_command=True)
-@click.version_option(package_name="vrs_anvil")
+@click.version_option(package_name="vrs_anvil_toolkit")
 @click.option(
     "--manifest",
     type=click.Path(exists=False),

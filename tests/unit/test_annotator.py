@@ -42,44 +42,26 @@ deletion_inputs = {
 }
 
 gnomad_deletion_output = {
-    "id": "ga4gh:VA.oniij0pYTpd5J8GLcjevFlXZLBQvPkZX",
-    "type": "Allele",
-    "digest": "oniij0pYTpd5J8GLcjevFlXZLBQvPkZX",
-    "location": {
-        "id": "ga4gh:SL.eI5ABJWkbKwkphNVWVRvz69apy3lbcOD",
-        "type": "SequenceLocation",
-        "digest": "eI5ABJWkbKwkphNVWVRvz69apy3lbcOD",
-        "sequenceReference": {
-            "type": "SequenceReference",
-            "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
-        },
-        "start": 20003095,
-        "end": 20003097,
-    },
-    "state": {"type": "LiteralSequenceExpression", "sequence": "A"},
-}
-
-deletion_output_normalized = {
-    "digest": "agNTkBOVZ0HQP5iWJ2GoRovSaHUCyZHN",
     "id": "ga4gh:VA.agNTkBOVZ0HQP5iWJ2GoRovSaHUCyZHN",
+    "type": "Allele",
+    "digest": "agNTkBOVZ0HQP5iWJ2GoRovSaHUCyZHN",
     "location": {
-        "digest": "30MgiQJ3IB1mk1wq4RyhUADF_V0vw0fD",
         "id": "ga4gh:SL.30MgiQJ3IB1mk1wq4RyhUADF_V0vw0fD",
-        "end": 20003097,
-        "start": 20003096,
-        "sequenceReference": {
-            "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
-            "type": "SequenceReference",
-        },
         "type": "SequenceLocation",
+        "digest": "30MgiQJ3IB1mk1wq4RyhUADF_V0vw0fD",
+        "sequenceReference": {
+            "type": "SequenceReference",
+            "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
+        },
+        "start": 20003096,
+        "end": 20003097,
     },
     "state": {
-        "length": 0,
-        "repeatSubunitLength": 1,
-        "sequence": "",
         "type": "ReferenceLengthExpression",
+        "length": 0,
+        "sequence": "",
+        "repeatSubunitLength": 1,
     },
-    "type": "Allele",
 }
 
 # https://www.ncbi.nlm.nih.gov/clinvar/variation/1687427/?new_evidence=true
@@ -90,24 +72,6 @@ insertion_inputs = {
 }
 
 gnomad_insertion_output = {
-    "id": "ga4gh:VA.f-shIC8omRUmtaV-N8eHaVg_d8HMMpcf",
-    "type": "Allele",
-    "digest": "f-shIC8omRUmtaV-N8eHaVg_d8HMMpcf",
-    "location": {
-        "id": "ga4gh:SL.hCz-8ZydmFSS8VmN27Gv00bmuDn7mvSs",
-        "type": "SequenceLocation",
-        "digest": "hCz-8ZydmFSS8VmN27Gv00bmuDn7mvSs",
-        "sequenceReference": {
-            "type": "SequenceReference",
-            "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
-        },
-        "start": 20003009,
-        "end": 20003010,
-    },
-    "state": {"type": "LiteralSequenceExpression", "sequence": "AG"},
-}
-
-insertion_output_normalized = {
     "digest": "YSFR_-q58UM-bsgyq9ScHa4hfNOWGelM",
     "id": "ga4gh:VA.YSFR_-q58UM-bsgyq9ScHa4hfNOWGelM",
     "location": {
@@ -133,24 +97,6 @@ duplication_inputs = {
 }
 
 duplication_output = {
-    "id": "ga4gh:VA.7owfTeiSqoME8zr4p6IqlAu0cNs4Mvu-",
-    "type": "Allele",
-    "digest": "7owfTeiSqoME8zr4p6IqlAu0cNs4Mvu-",
-    "location": {
-        "id": "ga4gh:SL.yCVGYQzbSLQe-GeAaHbW0dOiEGzHF3Yj",
-        "type": "SequenceLocation",
-        "digest": "yCVGYQzbSLQe-GeAaHbW0dOiEGzHF3Yj",
-        "sequenceReference": {
-            "type": "SequenceReference",
-            "refgetAccession": "SQ._0wi-qoDrvram155UmcSC-zA5ZK4fpLT",
-        },
-        "start": 19993837,
-        "end": 19993839,
-    },
-    "state": {"type": "LiteralSequenceExpression", "sequence": "GTGT"},
-}
-
-duplication_output_normalized = {
     "digest": "2Ju2sXpBNposOefRvorsmfqkAvt9tRHD",
     "id": "ga4gh:VA.2Ju2sXpBNposOefRvorsmfqkAvt9tRHD",
     "location": {
@@ -184,15 +130,15 @@ def test_normalized_results(caching_translator):
     )
     assert (
         tlr._from_gnomad(deletion_inputs["gnomad"]).model_dump(exclude_none=True)
-        == deletion_output_normalized
+        == gnomad_deletion_output
     )
     assert (
         tlr._from_gnomad(insertion_inputs["gnomad"]).model_dump(exclude_none=True)
-        == insertion_output_normalized
+        == gnomad_insertion_output
     )
     assert (
         tlr._from_gnomad(duplication_inputs["gnomad"]).model_dump(exclude_none=True)
-        == duplication_output_normalized
+        == duplication_output
     )
 
 
