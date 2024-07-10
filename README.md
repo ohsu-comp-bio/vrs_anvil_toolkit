@@ -32,7 +32,7 @@ In addition, this project facilitates the retrieval of evidence associated with 
 ### Prerequisites
 
 - Python 3.10 or later
-- Internet connectivity for dependency setup (seqrepo)
+- Internet connectivity for data dependency setup (seqrepo)
 
 ### Installation
 
@@ -75,6 +75,7 @@ The configuration of each VCF processing run run is controlled by a `manifest.ya
 Use this commented [sample manifest](tests/fixtures/manifest.yaml) as a starting point on the specific variables you can specify per run.
 
 **CLI**
+
 Below are a list of command line utilities that may be useful
 ```bash
 # activate the environment
@@ -108,6 +109,7 @@ python3 -m ga4gh.vrs.extras.vcf_annotation --vcf_in tests/fixtures/1kGP.chr1.100
 
 The above is an example using an example vcf. Replace the `--vcf_out` and `vrs_pickle_out` here with your desired output file path, where the output vcf can be BCF (`vcf.gz`) or VCF (`vcf`)
 
+Also, see the [VRS Annotator workflow](https://dockstore.org/workflows/github.com/ohsu-comp-bio/vrs-annotator/VRSAnnotator:main?tab=info) on Dockstore for a way to do this on Terra.
 
 ### Contributing
 
