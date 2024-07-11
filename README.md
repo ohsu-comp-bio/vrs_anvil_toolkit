@@ -36,14 +36,18 @@ In addition, this project facilitates the retrieval of evidence associated with 
 
 ### Installation
 
-1. Clone the repository:
-
+1. Get the repository either by...
+   1. Source code
    ```bash
    git clone https://github.com/ohsu-comp-bio/vrs_anvil_toolkit
    cd vrs_anvil_toolkit
    ```
+   2. PyPi
+   ```bash
+   pip install vrs_anvil_toolkit
+   ```
 
-2. Install dependencies:
+2. Install dependencies either...
    1. for local use
    ```bash
    # install postgresql@14 (required for vrs-python)
