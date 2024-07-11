@@ -1,6 +1,6 @@
 #!/bin/bash
 
-pip install -r requirements.txt
+pip install .
 
 # setup reference sequence database (seqrepo)
 SEQREPO_ROOT="$HOME/seqrepo"
