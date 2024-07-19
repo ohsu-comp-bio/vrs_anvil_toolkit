@@ -1,6 +1,5 @@
 import gzip
 import logging
-import os
 import pathlib
 import time
 from collections import defaultdict
@@ -32,6 +31,7 @@ END_TIME = "end_time"
 ELAPSED_TIME = "elapsed_time"
 LINE_COUNT = "line_count"
 VRS_OBJECT = "vrs_object"
+TIMESTAMP = "timestamp_str"
 
 
 def recursive_defaultdict():
@@ -71,11 +71,12 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
             metrics[key][METAKB_HITS] = 0
 
             for line in f:
+                if line.startswith("#"):
+                    continue
+
                 line_number += 1
                 total_lines += 1
 
-                if line.startswith("#"):
-                    continue
                 for gnomad_id in generate_gnomad_ids(
                     line, compute_for_ref=manifest.compute_for_ref
                 ):
@@ -97,7 +98,6 @@ def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
             metrics[key][ELAPSED_TIME] = (
                 metrics[key][END_TIME] - metrics[key][START_TIME]
             )
-            # TODO - should we delete the file (if its not a symlink) after we are done with it?
 
     _logger.info(
         f"_vcf_generator: Finished processing all files in the manifest {total_lines} lines processed."
@@ -137,7 +137,8 @@ def annotate_all(
     _logger.info("annotate_all: Starting.")
     vrs_anvil.manifest = manifest
     metakb_proxy = vrs_anvil.MetaKBProxy(
-        metakb_path=pathlib.Path(manifest.metakb_directory)
+        metakb_path=pathlib.Path(manifest.metakb_directory),
+        cache_path=pathlib.Path(manifest.cache_directory),
     )
     _logger.info("annotate_all: completed metakb init.")
 
@@ -171,13 +172,14 @@ def annotate_all(
                 # add vrs_id, allele_dict,actual evidence to this object as well (#3)
                 metrics[file_path][MATCHES][allele.id] = {
                     PARAMETERS: {"fmt": result.fmt, "var": result.var},
-                    VRS_OBJECT: allele.model_dump(exclude_none=True)
+                    VRS_OBJECT: allele.model_dump(exclude_none=True),
                 }
 
                 metrics[file_path][METAKB_HITS] += 1
 
     _logger.info("annotate_all: Finished processing results.")
 
+    metrics[TOTAL][TIMESTAMP] = timestamp_str
     metrics[TOTAL][END_TIME] = time.time()
     metrics[TOTAL][ELAPSED_TIME] = metrics[TOTAL][END_TIME] - metrics[TOTAL][START_TIME]
     metrics[TOTAL][SUCCESSES] = sum(
@@ -189,12 +191,11 @@ def annotate_all(
 
     _logger.info("annotate_all: Finished calculating metrics.")
 
-    # Append timestamp and pid to filename
+    # Append timestamp or suffix to filename
     if not timestamp_str:
         timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    pid = os.getpid()
     metrics_file = (
-        pathlib.Path(manifest.state_directory) / f"metrics_{timestamp_str}_{pid}.yaml"
+        pathlib.Path(manifest.state_directory) / f"metrics_{timestamp_str}.yaml"
     )
     with open(metrics_file, "w") as f:
         # clean up the recursive dict into a plain old dict so that it serialized to yaml neatly

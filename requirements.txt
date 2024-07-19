@@ -1,4 +1,4 @@
-ga4gh.vrs[extras]==2.0.0a5
+ga4gh.vrs[extras]==2.0.0a7
 diskcache
 biocommons.seqrepo
 glom

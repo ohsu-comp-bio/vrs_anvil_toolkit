@@ -5,7 +5,12 @@ import click
 import yaml
 import logging
 
-from vrs_anvil import Manifest, run_command_in_background, get_process_info
+from vrs_anvil import (
+    Manifest,
+    run_command_in_background,
+    get_process_info,
+    save_manifest,
+)
 from vrs_anvil.annotator import annotate_all
 from logging.handlers import RotatingFileHandler
 import pathlib
@@ -26,15 +31,21 @@ _logger = logging.getLogger("vrs_anvil.cli")
 )
 @click.option("--verbose", default=False, help="Log more information", is_flag=True)
 @click.option("--max_errors", default=10, help="Number of acceptable errors.")
+@click.option(
+    "--suffix", default=None, help="Substitute timestamp with alternate file suffix"
+)
 @click.pass_context
-def cli(ctx, verbose: bool, manifest: str, max_errors: int):
+def cli(ctx, verbose: bool, manifest: str, max_errors: int, suffix: str):
     """GA4GH GKS utility for AnVIL."""
 
     _log_level = logging.INFO
     if verbose:
         _log_level = logging.DEBUG
 
-    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if suffix is not None:
+        timestamp_str = suffix
+    else:
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     try:
         with open(manifest, "r") as stream:
@@ -46,7 +57,7 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
                 # Create a rotating file handler with a max size of 10MB and keep 3 backup files
                 log_path = (
                     pathlib.Path(manifest.state_directory)
-                    / f"vrs_anvil_{timestamp_str}_{os.getpid()}.log"
+                    / f"vrs_anvil_{timestamp_str}.log"
                 )
                 file_handler = RotatingFileHandler(
                     log_path, maxBytes=10 * 1024 * 1024, backupCount=3
@@ -77,7 +88,6 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
 
             if verbose:
                 click.secho(f"📢  {manifest}", fg="green")
-
     except Exception as exc:
         click.secho(f"{exc}", fg="yellow")
         ctx.ensure_object(dict)
@@ -96,13 +106,18 @@ def cli(ctx, verbose: bool, manifest: str, max_errors: int):
 def annotate_cli(ctx, scatter: bool):
     """Read manifest file, annotate variants, all parameters controlled by manifest.yaml."""
 
+    assert "manifest" in ctx.obj, "Manifest not found."
     timestamp_str = ctx.obj["timestamp_str"]
 
+    # normal run with single process
     if not scatter:
         try:
-            assert "manifest" in ctx.obj, "Manifest not found."
             manifest = ctx.obj["manifest"]
+            manifest_path = f"{manifest.work_directory}/manifest_{timestamp_str}.yaml"
+            save_manifest(manifest, manifest_path)
+            click.secho(f"🔑 Manifest saved at {manifest_path}", fg="yellow")
             _logger.debug(f"Manifest: {ctx.obj['manifest']}")
+
             click.secho("🚧  annotating variants", fg="yellow")
             metrics_file = annotate_all(
                 manifest, max_errors=ctx.obj["max_errors"], timestamp_str=timestamp_str
@@ -111,41 +126,45 @@ def annotate_cli(ctx, scatter: bool):
         except Exception as exc:
             click.secho(f"{exc}", fg="red")
             _logger.exception(exc)
-    else:
+    else:  # scattered processes / multiprocessing
         try:
-
-            assert "manifest" in ctx.obj, "Manifest not found."
             parent_manifest = ctx.obj["manifest"]
-            c = 0
             scattered_processes = []
             child_processes = []
-            for _ in parent_manifest.vcf_files:
-                # create a new manifest for each VCF file, based on the parent manifest, clone the parent manifest
+
+            for i, vcf_file in enumerate(parent_manifest.vcf_files):
+                # create a new manifest for each VCF file based on the parent manifest
                 child_manifest = parent_manifest.copy(deep=True)
-                child_manifest.vcf_files = [_]
+                child_manifest.vcf_files = [vcf_file]
                 child_manifest.num_threads = 1
                 child_manifest.disable_progress_bars = True
+
+                suffix_str = f"scattered_{timestamp_str}_{i}"
                 child_manifest_path = (
                     pathlib.Path(child_manifest.work_directory)
-                    / f"manifest_{timestamp_str}_{c}.yaml"
+                    / f"manifest_{suffix_str}.yaml"
                 )
-                with open(child_manifest_path, "w") as stream:
-                    yaml.dump(child_manifest.model_dump(), stream)
-                child_process = run_command_in_background(
-                    f"vrs_anvil --manifest {child_manifest_path} annotate"
+                save_manifest(child_manifest, child_manifest_path)
+                click.secho(f"🔑 Manifest saved at {child_manifest_path}", fg="yellow")
+                _logger.debug(f"Manifest: {ctx.obj['manifest']}")
+
+                # run process to annotate each manifest
+                process = run_command_in_background(
+                    f"vrs_bulk --manifest {child_manifest_path} --suffix {suffix_str} annotate"
                 )
                 click.secho(
-                    f"🚧  annotating {_} on pid {child_process.pid}", fg="yellow"
+                    f"🚧  annotating {vcf_file} on pid {process.pid}", fg="yellow"
                 )
                 scattered_processes.append(
                     {
-                        "pid": child_process.pid,
+                        "pid": process.pid,
                         "manifest": str(child_manifest_path),
-                        "vcf": _,
+                        "vcf": vcf_file,
                     }
                 )
-                child_processes.append(child_process)
-                c += 1
+                child_processes.append(process)
+
+            # associate scattered processes to process id in yaml
             scattered_processes_path = (
                 pathlib.Path(parent_manifest.work_directory)
                 / f"scattered_processes_{timestamp_str}.yaml"
@@ -160,83 +179,107 @@ def annotate_cli(ctx, scatter: bool):
                 f"📊 scattered processes available in {scattered_processes_path}",
                 fg="green",
             )
+
+            # ensure all processes completed
             click.secho("🕒 waiting for processes to complete", fg="yellow")
             try:
-                for _ in child_processes:
-                    _.wait()
+                for process in child_processes:
+                    process.wait()
             except KeyboardInterrupt:
                 click.secho(
-                    "🚨  caught KeyboardInterrupt, terminating child processes",
+                    "🚨 caught KeyboardInterrupt, terminating child processes",
                     fg="red",
                 )
-                for _ in child_processes:
-                    _.terminate()
-                for _ in child_processes:
-                    _.wait()
+                for process in child_processes:
+                    process.terminate()
+                for process in child_processes:
+                    process.wait()
 
+            click.secho("✅  all processes completed", fg="green")
         except Exception as exc:
             click.secho(f"{exc}", fg="red")
             _logger.exception(exc)
 
 
+# TODO: allow user to pass in a particular timestamp?
 @cli.command("ps")
 @click.pass_context
 def ps_cli(ctx):
     """Show status of latest scatter command."""
+
     try:
         assert "manifest" in ctx.obj, "Manifest not found."
         parent_manifest = ctx.obj["manifest"]
+
+        # get most recent set of scattered manifests
+        file_prefix = "scattered_processes_"
+        filename_match = f"{file_prefix}*.yaml"
+
         scattered_processes_path = pathlib.Path(parent_manifest.work_directory)
         scattered_processes_paths = sorted(
-            x for x in scattered_processes_path.glob("scattered_processes_*.yaml")
+            x for x in scattered_processes_path.glob(filename_match)
         )
         if not scattered_processes_paths:
             click.secho(
-                f"🚧  no scattered processes found in {parent_manifest.work_directory}/scattered_processes_*.yaml",
+                f"🚧  no scattered processes found in {parent_manifest.work_directory}/{filename_match}",
                 fg="red",
             )
             return
         scattered_processes_path = scattered_processes_paths[-1]
+
+        # list associated info for each process
         state_dir = pathlib.Path(parent_manifest.state_directory)
         with open(scattered_processes_path, "r") as stream:
             scattered_processes = yaml.safe_load(stream)
-            for _ in scattered_processes["processes"]:
+            for process in scattered_processes["processes"]:
+                manifest_path = process["manifest"]
+                timestamp_str = (
+                    str(manifest_path).split("manifest_scattered_")[1].split(".")[0]
+                )
+
                 log_file = "NA"
                 metrics_file = "NA"
+
                 try:
-                    log_file = sorted(state_dir.glob(f"vrs_anvil*{_['pid']}.log"))[-1]
-                    metrics_file = sorted(state_dir.glob(f"metrics_*{_['pid']}.yaml"))[
+                    log_file = list(state_dir.glob(f"vrs_anvil_*{timestamp_str}.log"))[
                         -1
                     ]
-                except IndexError:
+                    metrics_file = list(
+                        state_dir.glob(f"metrics_*{timestamp_str}.yaml")
+                    )[-1]
+                except Exception:
                     pass
 
                 click.secho(
-                    f"🚧  pid: {str(_['pid'])}, manifest: {str(_['manifest'])}, vcf: {str(_['vcf'])}, metrics_file: {metrics_file}, log_file: {log_file}",
+                    f"🚧  pid: {str(process['pid'])}, manifest: {str(process['manifest'])}, vcf: {str(process['vcf'])}, metrics_file: {metrics_file}, log_file: {log_file}",
                     fg="yellow",
                 )
-                process = get_process_info(_["pid"])
-                if not process:
-                    # assert pathlib.Path(metrics_file).exists(), f"metrics file not found: {metrics_file}"
-                    # assert pathlib.Path(log_file).exists(), f"log file not found: {log_file}"
+                process_info = get_process_info(process["pid"])
+                if not process_info or metrics_file != "NA":
                     click.secho("  ✅  completed", fg="green")
                 else:
                     io_counters = "NA"
                     memory_info = "NA"
-                    if process.status() == "running":
+                    cpu_percent = "NA"
+
+                    status = process_info.status()
+                    if status == "running":
                         try:
-                            if hasattr(process, "io_counters"):
-                                io_counters = process.io_counters()
-                            if hasattr(process, "memory_info"):
-                                memory_info = process.memory_info()
+                            if hasattr(process_info, "io_counters"):
+                                io_counters = process_info.io_counters()
+                            if hasattr(process_info, "memory_info"):
+                                memory_info = process_info.memory_info()
+                            if hasattr(process_info, "cpu_percent"):
+                                cpu_percent = process_info.cpu_percent(interval=0.1)
                         except Exception as exc:
                             _logger.info(
-                                f"could not get io_counters/memory_info pid: {_['pid']} error:{exc}"
+                                f"could not get io_counters/memory_info pid: {process['pid']} error:{exc}"
                             )
-                    click.secho(
-                        f"  📊 {process.status()} cpu_percent: {process.cpu_percent(interval=0.1)}%, io_counters: {io_counters}, memory_info: {memory_info}",
-                        fg="yellow",
-                    )
+
+                        click.secho(
+                            f"  📊 {status.capitalize()}: cpu_percent: {cpu_percent}%, io_counters: {io_counters}, memory_info: {memory_info}",
+                            fg="yellow",
+                        )
     except Exception as exc:
         click.secho(f"{exc}", fg="red")
         _logger.exception(exc)

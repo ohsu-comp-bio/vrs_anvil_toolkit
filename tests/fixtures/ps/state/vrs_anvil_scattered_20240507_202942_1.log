@@ -1,0 +1,10 @@
+2024-05-07 20:29:43,157 MainThread vrs_anvil.annotator [INFO] annotate_all: Starting.
+2024-05-07 20:29:44,963 MainThread vrs_anvil.annotator [INFO] annotate_all: completed metakb init.
+2024-05-07 20:29:44,970 MainThread biocommons.seqrepo.fastadir.fastadir [INFO] File descriptor caching disabled
+2024-05-07 20:29:44,971 MainThread vrs_anvil [INFO] Cache is not enabled
+2024-05-07 20:29:45,422 MainThread vrs_anvil.annotator [INFO] Setting metrics for work/1kGP.chr1.1000.vcf
+2024-05-07 20:29:45,422 MainThread vrs_anvil.annotator [INFO] _vcf_generator: Finished processing all files in the manifest 889 lines processed.
+2024-05-07 20:29:45,422 MainThread vrs_anvil.annotator [INFO] _vrs_generator: Finished processing all vrs results in the manifest 889 results processed.
+2024-05-07 20:29:45,422 MainThread vrs_anvil.annotator [INFO] annotate_all: Finished processing results.
+2024-05-07 20:29:45,422 MainThread vrs_anvil.annotator [INFO] annotate_all: Finished calculating metrics.
+2024-05-07 20:29:45,423 MainThread vrs_anvil.annotator [INFO] annotate_all: Finished writing metrics.

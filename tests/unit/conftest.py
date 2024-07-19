@@ -4,7 +4,6 @@ import pathlib
 import pytest
 import yaml
 
-import vrs_anvil
 from vrs_anvil.translator import Translator
 from vrs_anvil import caching_allele_translator_factory, Manifest
 
@@ -15,36 +14,24 @@ _logger.setLevel(logging.DEBUG)
 @pytest.fixture
 def manifest_path() -> pathlib.Path:
     """Return a path to a manifest file."""
-    _ = pathlib.Path("tests/fixtures/manifest.yaml").resolve()
-    assert _.exists()
-    return _
+    path = pathlib.Path("tests/fixtures/manifest.yaml").resolve()
+    assert path.exists()
+    return path
 
 
-# @pytest.fixture(autouse=True)
-# def change_test_dir(monkeypatch, tmp_path):
-#     """Change to a temporary directory for testing."""
-#     # see https://stackoverflow.com/questions/62044541/change-pytest-working-directory-to-test-case-directory
-#     monkeypatch.chdir(tmp_path)
-
-
+# note that tmp_path is a fixture provided by pytest
 @pytest.fixture
 def testing_manifest(manifest_path: pathlib.Path, tmp_path) -> Manifest:
-    """Set the testing manifest for this run."""
     with open(manifest_path, "r") as stream:
         manifest_dict = yaml.safe_load(stream)
-        for _ in ["work_directory", "cache_directory", "state_directory"]:
-            manifest_dict[_] = str(tmp_path / manifest_dict[_])
-        manifest = Manifest.parse_obj(manifest_dict)
+
+        # use pytest-provided relative path
+        # note that metakb_directory is omitted to refer to original cdms
+        for dir_key in ["work_directory", "cache_directory", "state_directory"]:
+            manifest_dict[dir_key] = str(tmp_path / manifest_dict[dir_key])
+
+        manifest = Manifest.model_validate(manifest_dict)
     return manifest
-
-
-@pytest.fixture
-def testing_manifest_path(testing_manifest: Manifest, tmp_path) -> pathlib.Path:
-    """Set the testing manifest for this run."""
-    _ = tmp_path / "manifest.yml"
-    with open(_, "w") as stream:
-        yaml.dump(testing_manifest.model_dump(), stream)
-    return _
 
 
 @pytest.fixture
@@ -54,27 +41,21 @@ def metakb_directory(testing_manifest):
 
 
 @pytest.fixture
-def initialized_manifest(testing_manifest) -> bool:
-    """state change, the manifest is initialized."""
-    vrs_anvil.manifest = testing_manifest
-    return True
-
-
-@pytest.fixture
 def seqrepo_dir(testing_manifest):
     """Return the seqrepo directory as fixture."""
     return testing_manifest.seqrepo_directory
 
 
 @pytest.fixture
-def caching_translator(initialized_manifest):
+def caching_translator(testing_manifest):
     """Return a single translator instance."""
-    # relies on testing_manifest setting the vrs_anvil.manifest
-    return caching_allele_translator_factory()
+    return caching_allele_translator_factory(
+        seqrepo_directory=testing_manifest.seqrepo_directory
+    )
 
 
 @pytest.fixture
-def translator(initialized_manifest):
+def translator():
     """Return a translator instance."""
     return Translator(normalize=False)
 
@@ -82,7 +63,7 @@ def translator(initialized_manifest):
 @pytest.fixture()
 def num_threads(testing_manifest):
     """Return the number of threads to use for testing."""
-    return vrs_anvil.manifest.num_threads
+    return testing_manifest.num_threads
 
 
 @pytest.fixture

@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import pathlib
 import subprocess
 from typing import Optional, Generator, Any
 import zipfile
@@ -11,9 +10,11 @@ from biocommons.seqrepo import SeqRepo
 from diskcache import Cache
 from ga4gh.vrs.dataproxy import SeqRepoDataProxy
 from ga4gh.vrs.extras.translator import AlleleTranslator
+from pathlib import Path
 from glom import glom
 from pydantic import BaseModel, model_validator
 import requests
+import yaml
 
 
 _logger = logging.getLogger("vrs_anvil")
@@ -40,9 +41,9 @@ def seqrepo_dir():
                     return value + "/latest"
 
 
-def cache_directory(cache_name: str) -> str:
+def get_cache_directory(cache_dir: str, cache_name: str) -> str:
     """Return the cache directory."""
-    return str(pathlib.Path(manifest.cache_directory) / cache_name)
+    return str(Path(cache_dir) / cache_name)
 
 
 class CachingAlleleTranslator(AlleleTranslator):
@@ -56,7 +57,9 @@ class CachingAlleleTranslator(AlleleTranslator):
         self._cache = None
         if manifest and manifest.cache_enabled:
             self._cache = Cache(
-                directory=cache_directory("allele_translator"),
+                directory=get_cache_directory(
+                    manifest.cache_directory, "allele_translator"
+                ),
                 size_limit=cache_size_limit,
             )
         else:
@@ -162,16 +165,17 @@ def find_items_with_key(dictionary, key_to_find):
 class MetaKBProxy(BaseModel):
     """A proxy for the MetaKB, maintains a cache of VRS ids."""
 
-    metakb_path: pathlib.Path
+    metakb_path: Path
+    cache_path: Path
     _cache: Optional[Cache] = None
 
-    def __init__(self, metakb_path: pathlib.Path, cache: Cache = None):
-        super().__init__(metakb_path=metakb_path, _cache=cache)
+    def __init__(self, metakb_path: Path, cache_path: Path, cache: Cache = None):
+        super().__init__(metakb_path=metakb_path, cache_path=cache_path, _cache=cache)
         if cache is None:
             reload_cache = False
             if not (metakb_path / "cache").is_dir():
                 reload_cache = True
-            cache = Cache(directory=cache_directory("metakb"))
+            cache = Cache(directory=get_cache_directory(cache_path, "metakb"))
             # cache.stats(enable=True) # drives up disk usage
             if reload_cache:
                 for _ in metakb_ids(metakb_path):
@@ -185,10 +189,10 @@ class MetaKBProxy(BaseModel):
 
 def metakb_ids(metakb_path) -> Generator[str, None, None]:
     """Find all the applicable vrs ids in the metakb files."""
-    if len(list(pathlib.Path(metakb_path).glob("*.json"))) == 0:
+    if len(list(Path(metakb_path).glob("*.json"))) == 0:
         _get_metakb_models(metakb_path)
 
-    for file_name in pathlib.Path(metakb_path).glob("*.json"):
+    for file_name in Path(metakb_path).glob("*.json"):
         if file_name.is_file():
             with open(file_name, "r") as file:
                 data = json.loads(file.read())
@@ -202,7 +206,7 @@ def metakb_ids(metakb_path) -> Generator[str, None, None]:
 
 
 def _get_metakb_models(metakb_path):
-    def _download_s3(url: str, outfile_path: pathlib.Path) -> None:
+    def _download_s3(url: str, outfile_path: Path) -> None:
         """Download objects from public s3 bucket
 
         :param url: URL for metakb file in s3 bucket
@@ -215,7 +219,7 @@ def _get_metakb_models(metakb_path):
                     if chunk:
                         h.write(chunk)
 
-    pathlib.Path(metakb_path).mkdir(exist_ok=True)
+    Path(metakb_path).mkdir(exist_ok=True)
 
     date = "20240305"
     json_files = [f"civic_cdm_{date}.json", f"moa_cdm_{date}.json"]
@@ -287,19 +291,19 @@ class Manifest(BaseModel):
     @model_validator(mode="after")
     def check_paths(self) -> "Manifest":
         """Post init method to set the cache directory."""
-        self.seqrepo_directory = str(pathlib.Path(self.seqrepo_directory).expanduser())
-        self.work_directory = str(pathlib.Path(self.work_directory).expanduser())
-        self.cache_directory = str(pathlib.Path(self.cache_directory).expanduser())
-        self.state_directory = str(pathlib.Path(self.state_directory).expanduser())
-        self.metakb_directory = str(pathlib.Path(self.metakb_directory).expanduser())
+        self.seqrepo_directory = str(Path(self.seqrepo_directory).expanduser())
+        self.work_directory = str(Path(self.work_directory).expanduser())
+        self.cache_directory = str(Path(self.cache_directory).expanduser())
+        self.state_directory = str(Path(self.state_directory).expanduser())
+        self.metakb_directory = str(Path(self.metakb_directory).expanduser())
 
         for _ in ["seqrepo_directory", "metakb_directory"]:
-            if not pathlib.Path(getattr(self, _)).exists():
+            if not Path(getattr(self, _)).exists():
                 raise ValueError(f"{_} does not exist")
 
         for _ in ["work_directory", "cache_directory", "state_directory"]:
-            if not pathlib.Path(getattr(self, _)).exists():
-                pathlib.Path(getattr(self, _)).mkdir(parents=True, exist_ok=True)
+            if not Path(getattr(self, _)).exists():
+                Path(getattr(self, _)).mkdir(parents=True, exist_ok=True)
                 _logger.debug(f"Created directory {getattr(self, _)}")
 
         return self
@@ -339,3 +343,9 @@ def get_process_info(pid):
         return psutil.Process(pid)
     except psutil.NoSuchProcess:
         return None
+
+
+def save_manifest(manifest: Manifest, manifest_path: str):
+    """pass in a Manifest and yaml path"""
+    with open(manifest_path, "w") as stream:
+        yaml.dump(manifest.model_dump(), stream)

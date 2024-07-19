@@ -1,0 +1,16 @@
+total:
+  elapsed_time: 0.4588449001312256
+  end_time: 1715138985.422601
+  errors: 0
+  start_time: 1715138984.963756
+  successes: 889
+  timestamp_str: scattered_20240507_202942_1
+work/1kGP.chr1.1000.vcf:
+  elapsed_time: 0.4501192569732666
+  end_time: 1715138985.422341
+  errors: {}
+  line_count: 889
+  metakb_hits: 0
+  start_time: 1715138984.9722219
+  status: finished
+  successes: 889

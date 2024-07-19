@@ -55,7 +55,7 @@ def test_threaded_translator(gnomad_csv):
         assert isinstance(_, VCFItem), "should get a VRS id"
         allele = _.result
         assert allele.id is not None, "allele.id is None"
-        assert 'ga4gh:VA.' in allele.id, "allele.id is not a VRS id"
+        assert "ga4gh:VA." in allele.id, "allele.id is not a VRS id"
         c += 1
 
     if limit:
