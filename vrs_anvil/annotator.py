@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Generator
 
 import yaml
-from ga4gh.vrs._internal.models import Allele  # noqa  F401 'Allele' private member
+from ga4gh.vrs import models as VRS
 from tqdm import tqdm
 
 import vrs_anvil
@@ -50,8 +50,8 @@ def _work_file_generator(manifest: Manifest) -> Generator[pathlib.Path, None, No
         yield work_file
 
 
-def _vcf_generator(manifest: Manifest) -> Generator[tuple, None, None]:
-    """Return a gnomad expression generator for each line in the vcf."""
+def _vcf_item_generator(manifest: Manifest) -> Generator[tuple, None, None]:
+    """Return a VCFItem for each line in the vcf."""
     total_lines = 0
     for work_file in tqdm(
         _work_file_generator(manifest),
@@ -110,7 +110,7 @@ def _vrs_generator(manifest: Manifest) -> Generator[dict, None, None]:
     c = 0
     for result in tlr.translate_from(
         generator=tqdm(
-            _vcf_generator(manifest),
+            _vcf_item_generator(manifest),
             total=manifest.estimated_vcf_lines,
             disable=manifest.disable_progress_bars,
         ),
@@ -123,7 +123,7 @@ def _vrs_generator(manifest: Manifest) -> Generator[dict, None, None]:
     )
 
 
-def vrs_ids(allele: Allele) -> list[str]:
+def vrs_ids(allele: VRS.Allele) -> list[str]:
     """Return a list of VRS ids from an allele."""
     return [allele.id]  # , allele.location.id, allele.location.sequence_id]
 
@@ -159,20 +159,18 @@ def annotate_all(
             if total_errors > max_errors:
                 break
         else:
-            allele = result.result
-            assert isinstance(
-                allele, Allele
-            ), f"result is not the expected Pydantic Model {type(allele)} {result.keys()}"
+            allele_id = result.result
+
             metrics[file_path][SUCCESSES] += 1
 
             # check metaKB cache, TODO - it would be nice if we had the metakb.study.id and added that to result_dict
-            if any([metakb_proxy.get(_) for _ in vrs_ids(allele)]):
-                _logger.info(f"VRS id {allele.id} found in metakb. {result}")
+            if metakb_proxy.get(allele_id):
+                _logger.info(f"VRS id {allele_id} found in metakb. {result}")
 
-                # add vrs_id, allele_dict,actual evidence to this object as well (#3)
-                metrics[file_path][MATCHES][allele.id] = {
-                    PARAMETERS: {"fmt": result.fmt, "var": result.var},
-                    VRS_OBJECT: allele.model_dump(exclude_none=True),
+                # add vrs_id, allele_dict, actual evidence to this object as well (#3)
+                metrics[file_path][MATCHES][allele_id] = {
+                    "fmt": result.fmt,
+                    "var": result.var,
                 }
 
                 metrics[file_path][METAKB_HITS] += 1

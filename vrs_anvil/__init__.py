@@ -8,6 +8,7 @@ import zipfile
 import psutil
 from biocommons.seqrepo import SeqRepo
 from diskcache import Cache
+from ga4gh.vrs import models as VRS
 from ga4gh.vrs.dataproxy import SeqRepoDataProxy
 from ga4gh.vrs.extras.translator import AlleleTranslator
 from pathlib import Path
@@ -73,12 +74,16 @@ class CachingAlleleTranslator(AlleleTranslator):
             if key in self._cache:
                 return self._cache[key]
 
-        val = super().translate_from(var, fmt=fmt, **kwargs)
+        allele = super().translate_from(var, fmt=fmt, **kwargs)
+
+        assert isinstance(
+            allele, VRS.Allele
+        ), f"Allele is not the expected Pydantic Model {type(allele)}: {allele}"
 
         if self._cache is not None:
-            self._cache[key] = val
+            self._cache[key] = allele.id
 
-        return val
+        return allele.id
 
 
 def caching_allele_translator_factory(
