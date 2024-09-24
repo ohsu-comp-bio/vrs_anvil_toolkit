@@ -147,7 +147,6 @@ def test_results(caching_translator):
     that the id and digest are computed recursively for the Allele object"""
     tlr = caching_translator
     assert tlr is not None
-    tlr.normalize = True
 
     inputs_dict = {
         "snv": (snv_inputs, snv_output),
@@ -171,8 +170,6 @@ def test_cache(caching_translator):
     """Ensure that results from getting allele IDs are faster the second time."""
     tlr = caching_translator
     assert tlr is not None
-    tlr.normalize = False
-
     all_inputs = [snv_inputs, deletion_inputs, insertion_inputs, duplication_inputs]
 
     start_time = time.time()
@@ -202,7 +199,6 @@ def test_threading(translator, num_threads):
     """Ensure we can feed the threaded_translate_from method a generator and get results back."""
     tlr = translator
     assert tlr is not None
-    tlr.normalize = False
 
     parameters = [
         {"fmt": "gnomad", "var": snv_inputs["gnomad"]},
