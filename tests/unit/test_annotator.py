@@ -147,7 +147,7 @@ def test_results(caching_translator):
     that the id and digest are computed recursively for the Allele object"""
     tlr = caching_translator
     assert tlr is not None
-    tlr.normalize = False
+    tlr.normalize = True
 
     inputs_dict = {
         "snv": (snv_inputs, snv_output),

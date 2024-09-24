@@ -3,18 +3,13 @@ from typing import Generator
 
 import pytest
 from pysam import VariantFile, VariantRecord
-
-
-@pytest.fixture
-def url():
-    """Return a remote VCF URL."""
-    return os.environ['MY_OBJECT']
+from datetime import datetime
 
 
 @pytest.fixture
 def chromosome():
     """Return chromosome in the VCF."""
-    return 'chrY'
+    return "chrY"
 
 
 @pytest.fixture
@@ -37,52 +32,112 @@ def expected_record_count():
 
 def participants(record: VariantRecord) -> Generator[str, None, None]:
     """Return the participants that `have` this allele."""
-    assert 'GT' in record.format, "Genotype (GT) is required"
+    assert "GT" in record.format, "Genotype (GT) is required"
 
     for participant, values in record.samples.items():
-        assert 'GT' in values, "Genotype (GT) is required"
+        assert "GT" in values, "Genotype (GT) is required"
         # see https://samtools.github.io/hts-specs/VCFv4.1.pdf
 
-        # In Variant Call Format (VCF) files, GT stands for genotype, which is encoded as allele values separated by a slash (/) or vertical pipe (|):
-        # 0: The reference base
-        # 1: The first entry in the ALT column
-        # 2: The second allele listed in ALT
-        # Forward slash (/): Indicates that no phasing information is available
-        # Vertical pipe (|): Indicates that the genotype is phased
-
         # TODO - this test is a bit naive, should we be more robust. consider AD, GQ, RGQ?
-        if any(values['GT']):
+        if any(values["GT"]):
             yield participant
 
 
-        ##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
-
-        # see https://gatk.broadinstitute.org/hc/en-us/articles/360035531692-VCF-Variant-Call-Format#:~:text=Allele%20depth%20(AD)%20and%20depth,each%20of%20the%20reported%20alleles.
-        # In a Variant Call Format (VCF) file, AD stands for Allele Depth, which is the number of reads that support each allele. The AD field is an array that includes the reference allele as the first entry, and the remaining entries are for each alternate allele at that locus
-
-        ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
-
-        # see https://gatk.broadinstitute.org/hc/en-us/articles/360035531692-VCF-Variant-Call-Format#:~:text=PL%20is%20calculated.-,GQ,how%20they%20should%20be%20used.
-        # In Variant Call Format (VCF), GQ stands for Genotype Quality and is a measure of how confident a genotype assignment is. GQ is calculated by taking the difference between the PL of the second most likely genotype and the PL of the most likely genotype. The PLs are normalized so that the most likely PL is always 0, so the GQ is usually equal to the second smallest PL. However, the GQ is capped at 99, so if the second most likely PL is greater than 99, the GQ will be 99.
-
-        ##FORMAT=<ID=RGQ,Number=1,Type=Integer,Description="Unconditional reference genotype confidence, encoded as a phred quality -10*log10 p(genotype call is wrong)">
-
-        # see https://support.researchallofus.org/hc/en-us/articles/4614687617556-How-the-All-of-Us-Genomic-data-are-organized
-        # Reference Genotype Quality (RGQ) -- The phred-scaled confidence that the reference genotypes are correct.  A higher score indicates a higher confidence.  For more information on RGQ, please see the GQ documentation, but note that RGQ applies to the reference, not the variant.  For more information on interpreting phred-scaled values, please see Phred-scaled quality scores.
-
-
-def test_remote_vcf(url, chromosome, start, stop, expected_record_count):
+def test_remote_vcf(vcf_path, chromosome, start, stop, expected_record_count):
     """Read a remote vcf file, query a range of alleles, check that at least 1 participant exists for each allele."""
-    assert 'GCS_OAUTH_TOKEN' in os.environ, "GCS_OAUTH_TOKEN is required\nexport GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)\nsee https://github.com/pysam-developers/pysam/issues/592#issuecomment-353693674 https://support.terra.bio/hc/en-us/articles/360042647612-May-4-2020"
+    assert "GCS_OAUTH_TOKEN" in os.environ, (
+        "GCS_OAUTH_TOKEN is required "
+        "export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token) "
+        "see https://github.com/pysam-developers/pysam/issues/592#issuecomment-353693674 https://support.terra.bio/hc/en-us/articles/360042647612-May-4-2020"
+    )
     try:
-        vcf = VariantFile(url)  # auto-detect input format
+        vcf = VariantFile(vcf_path)  # auto-detect input format
         # fetch returns pysam.libcbcf.VariantRecord
         records = [_ for _ in vcf.fetch(chromosome, start, stop)]
         assert len(records) == expected_record_count
+
         for variant_record in records:
             my_participants = [_ for _ in participants(variant_record)]
-            assert len(my_participants) < len(variant_record.samples), "Not all participants have this allele"
+            assert len(my_participants) < len(
+                variant_record.samples
+            ), "Not all participants have this allele"
             assert len(my_participants) > 0, "No participants have this allele"
     except ValueError as e:
         print("ValueError: has GCS_OAUTH_TOKEN expired?", e)
         raise e
+
+
+def test_caf_generation_given_row(vcf_path):
+    vcf = VariantFile(vcf_path)
+
+    for record in vcf.fetch():
+        # FIXME: pulling out vrs ids has to mirror the params of the VRS annotator...
+        # eg: if compute_for_ref = True, then
+        vrs_ids = record.info["VRS_Allele_IDs"]
+        print("VRS IDs:", vrs_ids)
+
+        focus_allele_count = 0
+        locus_allele_count = 0
+        num_homozygotes = 0
+        num_hemizygotes = 0
+
+        assert len(vcf.header.samples) == len(
+            record.samples
+        ), "row has different number of samples as the record"
+
+        # print([a.allele_indices for a in record.samples.values()])
+        for patient_id, genotype in record.samples.items():
+            alleles = genotype.allele_indices
+
+            # less than total number of samples, as only samples with a variant read are counted
+
+            # increment counts only if variant read/measured in cohort
+            if alleles == (None, None):
+                continue
+
+            num_alleles = sum(alleles)
+
+            # record zygosity
+            if num_alleles == 1:
+                num_hemizygotes += 1
+            elif num_alleles == 2:
+                num_homozygotes
+
+            # increment counts
+            focus_allele_count += num_alleles
+            locus_allele_count += 2
+
+        # populate caf dict
+        # FIXME: how do we figure out actual VRS ID if multiple?
+        allele_id = vrs_ids[-1]
+        allele_frequency = focus_allele_count * 1.0 / locus_allele_count
+
+        caf_dict = {
+            "type": "CohortAlleleFrequency",
+            "label": f"Overall Cohort Allele Frequency for {allele_id}",
+            "derivedFrom": {
+                "id": "GREGOR_COMBINED_CONSORTIUM_U07",
+                "type": "DataSet",
+                "label": "GREGoR Combined Consortium U07",
+                "version": f"Created {datetime.now()}",
+            },
+            "focusAllele": allele_id,
+            "focusAlleleCount": focus_allele_count,
+            "locusAlleleCount": locus_allele_count,
+            "alleleFrequency": allele_frequency,
+            "cohort": {
+                "id": "GREGOR_COMBINED_CONSORTIUM_U07",
+                "label": "GREGoR Combined Consortium U07",
+            },
+            "ancillaryResults": {
+                "homozygotes": num_homozygotes,
+                "hemizygotes": num_hemizygotes,
+            },
+        }
+        import json
+
+        print(json.dumps(caf_dict))
+        break
+
+    assert caf_dict["focusAlleleCount"] == 10, "expected focusAlleleCount of 10"
+    assert caf_dict["locusAlleleCount"] == 1168, "expected locusAlleleCount of 1168"
