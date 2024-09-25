@@ -1,9 +1,11 @@
+import json
 import os
-from typing import Generator
-
+import pandas as pd
 import pytest
-from pysam import VariantFile, VariantRecord
+
 from datetime import datetime
+from typing import Generator
+from pysam import VariantFile, VariantRecord
 
 
 @pytest.fixture
@@ -67,14 +69,15 @@ def test_remote_vcf(vcf_path, chromosome, start, stop, expected_record_count):
         raise e
 
 
-def test_caf_generation_given_row(vcf_path):
+def test_caf_generation_from_vcf_row(vcf_path):
     vcf = VariantFile(vcf_path)
+    ref_computed = True
+    caf_dicts = []
 
-    for record in vcf.fetch():
-        # FIXME: pulling out vrs ids has to mirror the params of the VRS annotator...
-        # eg: if compute_for_ref = True, then
+    for i, record in enumerate(vcf.fetch()):
         vrs_ids = record.info["VRS_Allele_IDs"]
         print("VRS IDs:", vrs_ids)
+        print(len(vrs_ids) - 1)
 
         focus_allele_count = 0
         locus_allele_count = 0
@@ -101,43 +104,127 @@ def test_caf_generation_given_row(vcf_path):
             if num_alleles == 1:
                 num_hemizygotes += 1
             elif num_alleles == 2:
-                num_homozygotes
+                num_homozygotes += 1
 
             # increment counts
             focus_allele_count += num_alleles
             locus_allele_count += 2
 
-        # populate caf dict
-        # FIXME: how do we figure out actual VRS ID if multiple?
-        allele_id = vrs_ids[-1]
         allele_frequency = focus_allele_count * 1.0 / locus_allele_count
 
-        caf_dict = {
-            "type": "CohortAlleleFrequency",
-            "label": f"Overall Cohort Allele Frequency for {allele_id}",
-            "derivedFrom": {
-                "id": "GREGOR_COMBINED_CONSORTIUM_U07",
-                "type": "DataSet",
-                "label": "GREGoR Combined Consortium U07",
-                "version": f"Created {datetime.now()}",
-            },
-            "focusAllele": allele_id,
-            "focusAlleleCount": focus_allele_count,
-            "locusAlleleCount": locus_allele_count,
-            "alleleFrequency": allele_frequency,
-            "cohort": {
-                "id": "GREGOR_COMBINED_CONSORTIUM_U07",
-                "label": "GREGoR Combined Consortium U07",
-            },
-            "ancillaryResults": {
-                "homozygotes": num_homozygotes,
-                "hemizygotes": num_hemizygotes,
-            },
-        }
-        import json
+        # populate caf dict(s) with each allele, multiple if multiple alts per variant
+        if ref_computed:
+            allele_ids = vrs_ids[1:]
+        else:
+            allele_ids = vrs_ids
 
-        print(json.dumps(caf_dict))
-        break
+        for allele_id in allele_ids:
+            caf_dict = {
+                "type": "CohortAlleleFrequency",
+                "label": f"Overall Cohort Allele Frequency for {allele_id}",
+                "derivedFrom": {
+                    "id": "GREGOR_COMBINED_CONSORTIUM_U07",
+                    "type": "DataSet",
+                    "label": "GREGoR Combined Consortium U07",
+                    "version": f"Created {datetime.now()}",
+                },
+                "focusAllele": allele_id,
+                "focusAlleleCount": focus_allele_count,
+                "locusAlleleCount": locus_allele_count,
+                "alleleFrequency": allele_frequency,
+                "cohort": {
+                    "id": "GREGOR_COMBINED_CONSORTIUM_U07",
+                    "label": "GREGoR Combined Consortium U07",
+                },
+                "ancillaryResults": {
+                    "homozygotes": num_homozygotes,
+                    "hemizygotes": num_hemizygotes,
+                },
+            }
 
-    assert caf_dict["focusAlleleCount"] == 10, "expected focusAlleleCount of 10"
-    assert caf_dict["locusAlleleCount"] == 1168, "expected locusAlleleCount of 1168"
+            print(json.dumps(caf_dict))
+            caf_dicts.append(caf_dict)
+
+        # check first caf
+        if i == 0:
+            assert caf_dict["focusAlleleCount"] == 10, "expected focusAlleleCount of 10"
+            assert (
+                caf_dict["locusAlleleCount"] == 1168
+            ), "expected locusAlleleCount of 1168"
+
+        # do only the first 10
+        if i == 9:
+            break
+
+    expected_num_cafs = 13
+    assert (
+        len(caf_dicts) == expected_num_cafs
+    ), f"expected {expected_num_cafs} caf_dicts, got {len(caf_dicts)}"
+
+
+def test_get_phenotypes_from_vcf_row(vcf_path):
+    vcf = VariantFile(vcf_path)
+
+    for i, record in enumerate(vcf.fetch()):
+        vrs_ids = record.info["VRS_Allele_IDs"]
+        phenotypes_set = set()
+        patients = [
+            patient
+            for patient, genotype in record.samples.items()
+            if 1 in genotype.allele_indices
+        ]
+        print(f"{record.chrom}-{record.pos}-{record.ref}-{record.alts}")
+
+        print("VRS IDs:", vrs_ids)
+
+        for patient_id in patients:
+            phenotypes = get_patient_phenotypes(
+                patient_id, "/Users/wongq/data/gregor/phenotypes.tsv"
+            )
+            phenotypes_set.update(phenotypes)
+
+        print(phenotypes_set)
+        print("len(phenotypes_set):", len(phenotypes_set))
+
+        if i == 3:
+            expected_num_phenotypes = 225
+            assert (
+                len(phenotypes_set) == expected_num_phenotypes
+            ), f"Expected {expected_num_phenotypes} phenotypes, got {len(phenotypes_set)}"
+
+        if i == 9:
+            break
+
+
+# FIXME: general methods to also move out of tests
+def get_patient_phenotypes(
+    patient_id: str, phenotypes_table: str = None, cached_dict: str = None
+) -> list:
+    """get list of phenotypes associated with a patient"""
+
+    # load from cache if exists
+    if cached_dict is not None and os.path.exists(cached_dict):
+        with open(cached_dict, "r") as file:
+            patient_to_phenotypes = json.load(file)
+            return patient_to_phenotypes[patient_id]
+
+    # if unspecified, parse table using Terra table
+    if phenotypes_table is None:
+        assert False, "pulling from Terra phenotypes table not implemented yet"
+
+    # table path specified, parse using that table
+    with open(phenotypes_table, "r") as file:
+        if phenotypes_table.endswith(".csv"):
+            pheno_df = pd.read_csv(file)
+        elif phenotypes_table.endswith(".tsv"):
+            pheno_df = pd.read_csv(file, sep="\t")
+        else:
+            raise Exception(
+                "Only csv and tsv file types implemented for phenotype table"
+            )
+
+        phenotypes = pheno_df[pheno_df["participant_id"] == patient_id][
+            "term_id"
+        ].unique()
+
+        return list(phenotypes)

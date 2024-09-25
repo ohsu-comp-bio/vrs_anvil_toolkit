@@ -11,3 +11,4 @@ tqdm
 google-cloud-storage
 psutil
 setuptools
+pandas
