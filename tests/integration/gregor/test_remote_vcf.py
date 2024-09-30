@@ -53,8 +53,8 @@ def participants(record: VariantRecord) -> Generator[str, None, None]:
 def test_remote_vcf(remote_vcf_path, chromosome, start, stop, expected_record_count):
     """Read a remote vcf file, query a range of alleles, check that at least 1 participant exists for each allele."""
     assert "GCS_OAUTH_TOKEN" in os.environ, (
-        "GCS_OAUTH_TOKEN is required "
-        "export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token) "
+        "GCS_OAUTH_TOKEN required: "
+        "export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)"
         "see https://github.com/pysam-developers/pysam/issues/592#issuecomment-353693674 https://support.terra.bio/hc/en-us/articles/360042647612-May-4-2020"
     )
     try:
@@ -78,6 +78,11 @@ def test_caf_generation_from_vcf_row(vcf_path):
     vcf = VariantFile(vcf_path)
     ref_computed = True
     caf_dicts = []
+
+    assert "VRS_Allele_IDs" in vcf.header.info, (
+        "no VRS_Allele_IDs key in INFO found, "
+        "please ensure that this is an VRS annotated VCF"
+    )
 
     for i, record in enumerate(vcf.fetch()):
         vrs_ids = record.info["VRS_Allele_IDs"]
@@ -168,6 +173,11 @@ def test_caf_generation_from_vcf_row(vcf_path):
 
 def test_get_phenotypes_from_vcf_row(vcf_path):
     vcf = VariantFile(vcf_path)
+
+    assert "VRS_Allele_IDs" in vcf.header.info, (
+        "no VRS_Allele_IDs key in INFO found, "
+        "please ensure that this is an VRS annotated VCF"
+    )
 
     for i, record in enumerate(vcf.fetch()):
         vrs_ids = record.info["VRS_Allele_IDs"]
@@ -299,9 +309,18 @@ def get_cohort_allele_frequency(
     participant_list: list[str] = None,
     phenotype: str = None,
 ) -> dict:
-    """Get CAF evidence objects given a variant (VRS ID) and optionally
-    a list of patients to subset with (defaults to all patients)
-    and a list of phenotypes to subset with (defaults to all phenotypes)"""
+    """Create a cohort allele frequency for either genotypes or phenotypes
+
+    Args:
+        variant_id (str): variant ID (VRS ID)
+        vcf_path (str): path to VCF [TODO - replace with variant index]
+        phenotype_table (str, optional): where to pull phenotype information from. Defaults to None.
+        participant_list (list[str], optional): Subset of participants to use. Defaults to None.
+        phenotype (str, optional): Specific phenotype to subset on. Defaults to None.
+
+    Returns:
+        dict: Cohort Allele Frequency object
+    """
 
     assert (
         "ga4gh:VA" in variant_id
@@ -328,44 +347,50 @@ def get_cohort_allele_frequency(
     num_hemizygotes = 0
     cohort_phenotypes = set()
 
-    # aggregate data for CAF if...
+    # aggregate data for CAF so long as...
     for participant_id, genotype in record.samples.items():
-        # 1. patient has allele
+        # 1. participant has allele
         alleles = genotype.allele_indices
         if alleles == (None, None):
             continue
 
-        # 2. patient in subset
+        # 2. participant in requested subset
         if participant_id not in participant_set:
             continue
 
-        # 3. phenotype in phenotypes subset
-        if participant_id not in phenotype_index:
-            # no matching phenotype for the participant should factor in
-            # as 0 of 2 alleles present
-            locus_allele_count += 2
-            continue
+        # 3. participant did not specify phenotype (doing general query)
+        # or participant has specified phenotype
+        has_specified_phenotype = (
+            participant_id in phenotype_index
+            and phenotype in phenotype_index[participant_id]
+        )
 
-        phenotype_set = phenotype_index[participant_id]
-        if phenotype is not None and phenotype not in phenotype_set:
-            locus_allele_count += 2
-            continue
+        # with these conditions satisfied...
+        if phenotype is None or has_specified_phenotype:
+            # increment focus allele count
+            num_alleles = sum(alleles)
+            focus_allele_count += num_alleles
 
-        # increment allele counts
-        num_alleles = sum(alleles)
-        focus_allele_count += num_alleles
+            # record zygosity
+            if num_alleles == 1:
+                num_hemizygotes += 1
+            elif num_alleles == 2:
+                num_homozygotes += 1
+
+        # increment total allele count
         locus_allele_count += 2
 
-        # record zygosity
-        if num_alleles == 1:
-            num_hemizygotes += 1
-        elif num_alleles == 2:
-            num_homozygotes += 1
+        # update phenotypes as necessary
+        if phenotype is not None:
+            # add to set of all phenotypes
+            if participant_id in phenotype_index:
+                cohort_phenotypes.update(phenotype_index[participant_id])
+        else:
+            # aggreggate phenotypes if they exist
+            if participant_id in phenotype_index:
+                cohort_phenotypes.update(phenotype_index[participant_id])
 
-        # add to set of all phenotypes
-        cohort_phenotypes.update(phenotype_set)
-
-    # populate finaly caf dict
+    # populate final caf dict
     allele_frequency = focus_allele_count * 1.0 / locus_allele_count
 
     caf_dict = {
@@ -412,8 +437,34 @@ def phenotype_table():
 
 
 def test_default_caf_gen(vrs_id, vcf_path, phenotype_table):
-    """test caf generation with default parameters (all patients, all phenotypes)"""
+    """test caf generation with default parameters subsetting only on one"""
     caf = get_cohort_allele_frequency(vrs_id, vcf_path, phenotype_table=phenotype_table)
     print(json.dumps(caf))
 
-    assert round(caf["alleleFrequency"], 6) == 0.040119, "incorrect allele frequency"
+    expected_allele_freq = 0.9926
+    actual_allele_freq = round(caf["alleleFrequency"], 4)
+    assert (
+        actual_allele_freq == expected_allele_freq
+    ), f"incorrect allele frequency, expected {expected_allele_freq} got {actual_allele_freq}"
+
+
+def test_caf_gen_one_pheno(vrs_id, vcf_path, phenotype_table):
+    phenotype = "HP:0001822"
+    """test caf generation with default parameters (all patients, all phenotypes)"""
+    caf = get_cohort_allele_frequency(
+        vrs_id, vcf_path, phenotype_table=phenotype_table, phenotype=phenotype
+    )
+    print(json.dumps(caf))
+
+    expected_allele_freq = 0.0015
+    actual_allele_freq = round(caf["alleleFrequency"], 4)
+    assert (
+        actual_allele_freq == expected_allele_freq
+    ), f"incorrect allele frequency, expected {expected_allele_freq} got {actual_allele_freq}"
+
+
+# def test_caf_gen_multi_participant():
+
+# def test_caf_gen_one_pheno_multi_participant():
+
+# def test_caf_gen_one_pheno_multi_participant():
