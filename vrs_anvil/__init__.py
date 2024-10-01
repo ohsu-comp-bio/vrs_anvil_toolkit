@@ -87,7 +87,7 @@ class CachingAlleleTranslator(AlleleTranslator):
 
 
 def caching_allele_translator_factory(
-    normalize: bool = False, seqrepo_directory: str = None
+    normalize: bool = True, seqrepo_directory: str = None
 ):
     """Return a CachingAlleleTranslator instance with local seqrepo"""
     if not seqrepo_directory:
@@ -273,7 +273,7 @@ class Manifest(BaseModel):
     seqrepo_directory: str = "~/seqrepo/latest"
     """The directory where seqrepo is located"""
 
-    normalize: bool = False
+    normalize: bool = True
     """Normalize the VRS ids"""
 
     limit: Optional[int] = None

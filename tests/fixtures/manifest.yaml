@@ -1,11 +1,6 @@
 #############
 # VCF FILES #
 #############
-# Number of works to use for processing, defaults to 20
-num_threads: 4
-
-# Should we create new VCFs with annotations. FOR FUTURE USE
-# annotate_vcfs: false
 
 # # add limit
 # limit: 100
@@ -48,7 +43,7 @@ cache_enabled: false
 # limit: 30000
 
 # normalize the VRS ids
-normalize: false
+normalize: true
 
 # compute VRS IDs for the reference allele as well as the alt
 compute_for_ref: false
