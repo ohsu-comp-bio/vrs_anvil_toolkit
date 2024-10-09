@@ -289,13 +289,12 @@ def get_patient_phenotype_index(
 
 
 def get_vcf_row(variant_id: str, vcf: VariantFile) -> VariantRecord:
-    # TODO: implement, could have multiple VRS IDs to look fofr
-
     assert "VRS_Allele_IDs" in vcf.header.info, (
         "no VRS_Allele_IDs key in INFO found, "
         "please ensure that this is an VRS annotated VCF"
     )
 
+    # TODO: use VRS ID -> VCF index to grab
     for i, record in enumerate(vcf.fetch()):
         if variant_id in record.info["VRS_Allele_IDs"]:
             print(";;;;;;;; record found at", i)
@@ -313,7 +312,7 @@ def get_cohort_allele_frequency(
 
     Args:
         variant_id (str): variant ID (VRS ID)
-        vcf_path (str): path to VCF [TODO - replace with variant index]
+        vcf_path (str): path to VCF
         phenotype_table (str, optional): where to pull phenotype information from. Defaults to None.
         participant_list (list[str], optional): Subset of participants to use. Defaults to None.
         phenotype (str, optional): Specific phenotype to subset on. Defaults to None.
@@ -331,31 +330,47 @@ def get_cohort_allele_frequency(
     vcf = VariantFile(vcf_path)
     record = get_vcf_row(variant_id, vcf)
 
+    # if multiple alts, get index associated with alt
+    # if ref is specified in VRS Alleles IDs, adjust indices to match
+    alt_index = record.info["VRS_Allele_IDs"].index(variant_id)
+    if "REF" not in vcf.header.info["VRS_Allele_IDs"].description:
+        alt_index -= 1
+    print("alt_index:", alt_index)
+
     # get index of participant to phenotypes
     print(phenotype_table)
     phenotype_index = get_patient_phenotype_index(phenotype_table, as_set=True)
 
-    # create subsets
-    participant_set = (
+    # create cohort, defaults to all patients in VCF
+    cohort = (
         set(participant_list) if participant_list is not None else set(record.samples)
     )
+
+    # FIXME: support for hemizygous regions (chrX / mitochondrial variants)
+    # GREGOR makes use of DRAGEN's continuous allele frequency approach:
+    # https://support-docs.illumina.com/SW/DRAGEN_v40/Content/SW/DRAGEN/MitochondrialCalling.htm
+    within_hemizygous_region = record.chrom in ["chrM", "chrY"]
+    within_x_chr = record.chrom == "chrX"
 
     # variables for final cohort allele frequency (CAF) object
     focus_allele_count = 0
     locus_allele_count = 0
-    num_homozygotes = 0
-    num_hemizygotes = 0
-    cohort_phenotypes = set()
+    cohort_phenotypes = set() if phenotype is None else [phenotype]
+
+    # if haploid not diploid, these fields are not relevant
+    if len(record.samples[0]["GT"]) == 2:
+        num_homozygotes = 0
+        num_hemizygotes = 0
 
     # aggregate data for CAF so long as...
     for participant_id, genotype in record.samples.items():
-        # 1. participant has allele
+        # 1. participant has recorded genotype
         alleles = genotype.allele_indices
-        if alleles == (None, None):
+        if all(a is None for a in alleles):
             continue
 
-        # 2. participant in requested subset
-        if participant_id not in participant_set:
+        # 2. participant in specified cohort
+        if participant_id not in cohort:
             continue
 
         # 3. participant did not specify phenotype (doing general query)
@@ -367,26 +382,41 @@ def get_cohort_allele_frequency(
 
         # with these conditions satisfied...
         if phenotype is None or has_specified_phenotype:
-            # increment focus allele count
-            num_alleles = sum(alleles)
-            focus_allele_count += num_alleles
+            # increment focus allele count, handling multiple alts edge case
+            num_alt_alleles = sum(
+                [1 for _, alt_number in enumerate(alleles) if alt_number == alt_index]
+            )
+
+            if not within_hemizygous_region:
+                focus_allele_count += num_alt_alleles
+            elif num_alt_alleles > 0:
+                focus_allele_count += 1
 
             # record zygosity
-            if num_alleles == 1:
-                num_hemizygotes += 1
-            elif num_alleles == 2:
-                num_homozygotes += 1
+            if not within_hemizygous_region and len(alleles) == 2:
+                if num_alt_alleles == 1:
+                    num_hemizygotes += 1
+                elif num_alt_alleles == 2:
+                    num_homozygotes += 1
 
         # increment total allele count
-        locus_allele_count += 2
+        if within_hemizygous_region:
+            locus_allele_count += 1
+        elif within_x_chr:
+            # FIXME: make use of sex of participant?
+            is_female = True
+            locus_allele_count += 2 if is_female else 1
+        else:
+            locus_allele_count += len(alleles)
 
         # update phenotypes as necessary
         if phenotype is not None:
-            # add to set of all phenotypes
-            if participant_id in phenotype_index:
-                cohort_phenotypes.update(phenotype_index[participant_id])
+            # # add to set of all phenotypes
+            # if participant_id in phenotype_index:
+            #     cohort_phenotypes.update(phenotype_index[participant_id])
+            continue
         else:
-            # aggreggate phenotypes if they exist
+            # aggregate phenotypes if they exist
             if participant_id in phenotype_index:
                 cohort_phenotypes.update(phenotype_index[participant_id])
 
@@ -424,7 +454,7 @@ def get_cohort_allele_frequency(
 def vrs_id(vcf_path):
     for i, record in enumerate(VariantFile(vcf_path)):
         if i == 3:
-            return record.info["VRS_Allele_IDs"][-2]
+            return record.info["VRS_Allele_IDs"][1]  # 1 since 0 is a ref
 
 
 @pytest.fixture()
@@ -436,16 +466,79 @@ def phenotype_table():
     return os.environ["PHENOTYPE_TABLE"]
 
 
+def test_allele_counts_first_10_rows(phenotype_table):
+    vcf_path = "/Users/wongq/data/gregor/ann.100k.chr3.vcf.gz"
+    vcf = VariantFile(vcf_path)
+    has_ref = "REF" in vcf.header.info["VRS_Allele_IDs"].description
+
+    for i, record in enumerate(vcf.fetch()):
+        print("~~~~~~~~~ row ", i, "~~~~~~~~~")
+
+        # if REF VRS ID recorded, ignore
+        vrs_allele_ids = record.info["VRS_Allele_IDs"]
+        print("vrs_allele_ids:", vrs_allele_ids)
+        if has_ref:
+            vrs_allele_ids = vrs_allele_ids[1:]
+
+        for alt_index, allele_id in enumerate(vrs_allele_ids):
+            print("alt id:", allele_id)
+            if not allele_id:
+                continue
+
+            caf = get_cohort_allele_frequency(
+                allele_id, vcf_path, phenotype_table=phenotype_table
+            )
+
+            print("alt_index", alt_index)
+            print("AC:", record.info["AC"], caf["focusAlleleCount"])
+            print("AN:", record.info["AN"], caf["locusAlleleCount"])
+            ac = record.info["AC"][alt_index]
+            an = record.info["AN"]
+
+            assert (
+                caf["focusAlleleCount"] == ac
+            ), f"row {i} alt {alt_index} has different focus allele counts, expected {ac}, got {caf['focusAlleleCount']}"
+            assert (
+                caf["locusAlleleCount"] == an
+            ), f"row {i} alt {alt_index} has different locus allele counts, expected {an}, got {caf['locusAlleleCount']}"
+
+        if i == 10:
+            break
+
+
 def test_default_caf_gen(vrs_id, vcf_path, phenotype_table):
-    """test caf generation with default parameters subsetting only on one"""
+    """test caf generation with default parameters and no phenotype specified"""
     caf = get_cohort_allele_frequency(vrs_id, vcf_path, phenotype_table=phenotype_table)
     print(json.dumps(caf))
 
-    expected_allele_freq = 0.9926
+    # sanity checks
+    assert (
+        caf["type"] == "CohortAlleleFrequency"
+    ), f"object of type CohortAlleleFrequency not returned, {caf['type']} instead"
+    assert (
+        caf["focusAlleleCount"] <= caf["locusAlleleCount"]
+    ), f"Focus allele count ({caf['focusAlleleCount']}) is larger than locus allele count ({caf['locusAlleleCount']})"
+
+    print("focusAlleleCount:", caf["focusAlleleCount"])
+    print("locusAlleleCount:", caf["locusAlleleCount"])
+
+    # check allele frequency
+
+    expected_allele_freq = 0.9465
     actual_allele_freq = round(caf["alleleFrequency"], 4)
     assert (
         actual_allele_freq == expected_allele_freq
     ), f"incorrect allele frequency, expected {expected_allele_freq} got {actual_allele_freq}"
+
+    # ensure fields exist
+    expected_fields = [
+        "focusAlleleCount",
+        "locusAlleleCount",
+        "alleleFrequency",
+        "ancillaryResults",
+    ]
+    for field in expected_fields:
+        assert field in caf, f"expected field {field} in CAF"
 
 
 def test_caf_gen_one_pheno(vrs_id, vcf_path, phenotype_table):
