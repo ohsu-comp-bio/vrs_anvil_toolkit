@@ -17,7 +17,6 @@ def get_vcf_row(variant_id: str, vcf: VariantFile) -> VariantRecord:
     # TODO: use VRS ID -> VCF index to grab
     for i, record in enumerate(vcf.fetch()):
         if variant_id in record.info["VRS_Allele_IDs"]:
-            print(";;;;;;;; record found at", i)
             return record
 
 
@@ -74,7 +73,6 @@ def get_patient_phenotype_index(
         phenotype_df = pd.read_csv(phenotype_tsv, sep="\t")
     else:
         # table path specified, parse using that table
-        phenotype_index = {}
         with open(phenotype_table, "r") as file:
             if phenotype_table.endswith(".csv"):
                 phenotype_df = pd.read_csv(file)
@@ -85,6 +83,7 @@ def get_patient_phenotype_index(
                     "Only csv and tsv file types implemented for phenotype table"
                 )
 
+    phenotype_index = {}
     for participant_id in phenotype_df["participant_id"].unique():
         phenotypes = phenotype_df[phenotype_df["participant_id"] == participant_id][
             "term_id"
