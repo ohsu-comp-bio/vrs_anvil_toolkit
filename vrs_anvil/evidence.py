@@ -54,7 +54,7 @@ def get_vcf_row(
             if variant_id in record.info["VRS_Allele_IDs"]:
                 return record
 
-    raise Exception(f"no VCF coordinates found that matches variant ID {variant_id}")
+    raise Exception(f"no VCF row found matching variant ID {variant_id}")
 
 
 def get_patient_phenotype_index(
@@ -136,6 +136,7 @@ def get_patient_phenotype_index(
 def get_cohort_allele_frequency(
     variant_id: str,
     vcf_path: str,
+    vcf_index_path: str = None,
     phenotype_table: str = None,
     participant_list: list[str] = None,
     phenotype: str = None,
@@ -145,6 +146,7 @@ def get_cohort_allele_frequency(
     Args:
         variant_id (str): variant ID (VRS ID)
         vcf_path (str): path to VCF
+        vcf_index_path (str): path to VRS to VCF coordinates index (SQLite table)
         phenotype_table (str, optional): where to pull phenotype information from. Defaults to None.
         participant_list (list[str], optional): Subset of participants to use. Defaults to None.
         phenotype (str, optional): Specific phenotype to subset on. Defaults to None.
@@ -161,7 +163,7 @@ def get_cohort_allele_frequency(
     # in this case, the VCF row of the variant_id
 
     vcf = VariantFile(vcf_path)
-    record = get_vcf_row(variant_id, vcf)
+    record = get_vcf_row(variant_id, vcf, vcf_index_path)
 
     # if multiple alts, get index associated with alt
     # if ref is specified in VRS Alleles IDs, adjust indices to match
@@ -278,12 +280,9 @@ def get_cohort_allele_frequency(
     return caf_dict
 
 
-DEFAULT_SQLITE_LOCATION = Path(os.environ.get("VRS_VCF_INDEX"))
-
-
 def _get_connection(db_location: Path | None) -> sqlite3.Connection:
     if not db_location:
-        db_location = DEFAULT_SQLITE_LOCATION
+        db_location = Path(os.environ.get("VRS_VCF_INDEX"))
     return sqlite3.connect(db_location)
 
 
@@ -302,7 +301,9 @@ def fetch_by_vrs_ids(
         trunc_vrs_id = vrs_id[9:] if vrs_id.startswith("ga4gh:VA.") else vrs_id
         trunc_vrs_ids.append(trunc_vrs_id)
 
-    conn = _get_connection(db_location)
+    assert db_location.exists(), f"Index at {db_location} does not exist"
+    conn = sqlite3.connect(db_location)
+
     # have to manually make placeholders for python sqlite API --
     # should still be safe against injection by using parameterized query
     placeholders = ",".join("?" for _ in trunc_vrs_ids)
