@@ -5,7 +5,7 @@ import pytest
 from typing import Generator
 from pysam import VariantFile, VariantRecord
 
-from vrs_anvil.phenotype import get_cohort_allele_frequency, get_patient_phenotype_index
+from vrs_anvil.evidence import get_cohort_allele_frequency, get_patient_phenotype_index
 
 ############
 # FIXTURES #

@@ -1,6 +1,8 @@
 import io
 import json
 import os
+from pathlib import Path
+import sqlite3
 import pandas as pd
 
 from datetime import datetime
@@ -8,16 +10,51 @@ from firecloud import api as fapi
 from pysam import VariantFile, VariantRecord
 
 
-def get_vcf_row(variant_id: str, vcf: VariantFile) -> VariantRecord:
+def get_vcf_row(
+    variant_id: str, vcf: VariantFile, index_path: str = None
+) -> VariantRecord:
+    """given a variant id and annotated VCF, get the row ID associated with it
+
+    Args:
+        variant_id (str): VRS ID for the variant of interest
+        vcf (VariantFile): Pysam VariantFile
+        index_path (str, optional): Index used to speed up search for variant. Defaults to iterating through VCF.
+
+    Raises:
+        Exception: outputs if no index is found
+
+    Returns:
+        VariantRecord: A Pysam VariantRecord (VCF row)
+    """
+
     assert "VRS_Allele_IDs" in vcf.header.info, (
         "no VRS_Allele_IDs key in INFO found, "
         "please ensure that this is an VRS annotated VCF"
     )
 
-    # TODO: use VRS ID -> VCF index to grab
-    for i, record in enumerate(vcf.fetch()):
-        if variant_id in record.info["VRS_Allele_IDs"]:
-            return record
+    # try to populate from Bash env variable
+    if not index_path:
+        index_path = Path(os.environ.get("VRS_VCF_INDEX"))
+
+    if index_path:
+        # if index provided, use it to get VCF row
+        index_path = Path(index_path)
+
+        # find variant of interest
+        for _, chr, pos in fetch_by_vrs_ids([variant_id], index_path):
+            for record in vcf.fetch(f"chr{chr}", pos - 1, pos):
+                if variant_id in record.info["VRS_Allele_IDs"]:
+                    return record
+    else:
+        # otherwise, iterate through VCF
+        for record in enumerate(vcf.fetch()):
+            print(
+                "no VCF index specified, iterating through VCF to locate variant of interest"
+            )
+            if variant_id in record.info["VRS_Allele_IDs"]:
+                return record
+
+    raise Exception(f"no VCF coordinates found that matches variant ID {variant_id}")
 
 
 def get_patient_phenotype_index(
@@ -122,6 +159,7 @@ def get_cohort_allele_frequency(
 
     # get index of variant to patient
     # in this case, the VCF row of the variant_id
+
     vcf = VariantFile(vcf_path)
     record = get_vcf_row(variant_id, vcf)
 
@@ -238,3 +276,40 @@ def get_cohort_allele_frequency(
     }
 
     return caf_dict
+
+
+DEFAULT_SQLITE_LOCATION = Path(os.environ.get("VRS_VCF_INDEX"))
+
+
+def _get_connection(db_location: Path | None) -> sqlite3.Connection:
+    if not db_location:
+        db_location = DEFAULT_SQLITE_LOCATION
+    return sqlite3.connect(db_location)
+
+
+def fetch_by_vrs_ids(
+    vrs_ids: list[str], db_location: Path | None = None
+) -> list[tuple]:
+    """Access index by VRS ID.
+
+    :param vrs_id: VRS allele hash (i.e. everything after ``"ga4gh:VA."``)
+    :param db_location: path to sqlite file (assumed to exist)
+    :return: location description tuple if available
+    """
+
+    trunc_vrs_ids = []
+    for vrs_id in vrs_ids:
+        trunc_vrs_id = vrs_id[9:] if vrs_id.startswith("ga4gh:VA.") else vrs_id
+        trunc_vrs_ids.append(trunc_vrs_id)
+
+    conn = _get_connection(db_location)
+    # have to manually make placeholders for python sqlite API --
+    # should still be safe against injection by using parameterized query
+    placeholders = ",".join("?" for _ in trunc_vrs_ids)
+    result = conn.cursor().execute(
+        f"SELECT vrs_id, chr, pos FROM vrs_locations WHERE vrs_id IN ({placeholders})",  # noqa: S608
+        trunc_vrs_ids,
+    )
+    data = result.fetchall()
+    conn.close()
+    return data
