@@ -34,6 +34,9 @@ def get_vcf_row(
 
     # try to populate from Bash env variable
     if not index_path:
+        assert (
+            "VRS_VCF_INDEX" in os.environ
+        ), "no genotype index specified, no index path was provided nor was a variable name VRS_VCF_INDEX found."
         index_path = Path(os.environ.get("VRS_VCF_INDEX"))
 
     if index_path:
@@ -60,27 +63,60 @@ def get_vcf_row(
 def get_patient_phenotype_index(
     phenotype_table: str = None, cached_dict: str = None, as_set: bool = False
 ) -> dict[str, list | set]:
-    """get list of phenotypes associated with a patient""
+    """get index of phenotypes associated with a patient""
 
     Args:
-        patient_id (str): patient identifier used by phenotypes table
         phenotype_table (str, optional): Path to csv/tsv of phenotype data specified by the GREGoR data model.
                 Defaults to pulling from a Terra data table in existing workspace titled "phenotypes".
                 For more info on the data model, see https://gregorconsortium.org/data-model
         cached_dict (str, optional): Path to cached dictionary to use. Defaults to None.
+        as_set (bool, optional): whether to return each patient's phenotypes as a set rather than a list. Defaults to False.
 
     Returns:
-        list: list of phenotype codes
+        dict: phenotypes associated with each participant
     """
 
     # load from cache if exists
-    if cached_dict is not None and os.path.exists(cached_dict):
-        with open(cached_dict, "r") as file:
-            patient_to_phenotypes = json.load(file)
-            return patient_to_phenotypes
+    if cached_dict is not None:
+        if os.path.exists(cached_dict):
+            with open(cached_dict, "r") as file:
+                patient_to_phenotypes = json.load(file)
+
+                # convert phenotypes to sets if specified
+                if as_set:
+                    for patient, pheno_list in patient_to_phenotypes.items():
+                        patient_to_phenotypes[patient] = set(pheno_list)
+
+                return patient_to_phenotypes
+        else:
+            raise Exception(f"path to phenotype index does not exist: {cached_dict}")
+
+    # otherwise generate it
+    return create_patient_phenotype_index(
+        phenotype_table=phenotype_table, as_set=as_set
+    )
+
+
+def create_patient_phenotype_index(
+    phenotype_table: str = None, as_set: bool = False, save_path: str = None
+) -> dict[str, list | set]:
+    """create index of patient phenotypes
+
+    Args:
+        phenotype_table (str, optional): Path to csv/tsv of phenotype data specified by the GREGoR data model.
+            Defaults to pulling from a Terra data table in existing workspace titled "phenotypes".
+            For more info on the data model, see https://gregorconsortium.org/data-model
+        as_set (bool, optional): Whether to store patient phenotypes as a set rather than a list. Defaults to False.
+        save_path: path to save the patient index
+
+    Raises:
+        Exception: Terra environment not configured as expected or save path does not exist
+
+    Returns:
+        dict: phenotypes associated with each participant
+    """
 
     if phenotype_table is None:
-
         # if unspecified, ensure valid Terra environment
         for env_key in ["WORKSPACE_NAMESPACE", "WORKSPACE_NAME"]:
             assert (
@@ -120,6 +156,7 @@ def get_patient_phenotype_index(
                     "Only csv and tsv file types implemented for phenotype table"
                 )
 
+    # create patient to phenotype dict
     phenotype_index = {}
     for participant_id in phenotype_df["participant_id"].unique():
         phenotypes = phenotype_df[phenotype_df["participant_id"] == participant_id][
@@ -130,6 +167,22 @@ def get_patient_phenotype_index(
             set(phenotypes) if as_set else list(phenotypes)
         )
 
+    # save to disk if specified
+    if save_path:
+        if os.path.exists(save_path):
+            raise Exception(
+                f"index already exists at path: {save_path}. Please delete it before continuing"
+            )
+        else:
+            with open(save_path, "w") as file:
+
+                # make it serializable so can be written to disk
+                if as_set:
+                    for patient, pheno_set in phenotype_index.items():
+                        phenotype_index[patient] = list(pheno_set)
+
+                json.dump(phenotype_index, file)
+
     return phenotype_index
 
 
@@ -138,6 +191,7 @@ def get_cohort_allele_frequency(
     vcf_path: str,
     vcf_index_path: str = None,
     phenotype_table: str = None,
+    phenotype_index_path: str = None,
     participant_list: list[str] = None,
     phenotype: str = None,
 ) -> dict:
@@ -161,7 +215,6 @@ def get_cohort_allele_frequency(
 
     # get index of variant to patient
     # in this case, the VCF row of the variant_id
-
     vcf = VariantFile(vcf_path)
     record = get_vcf_row(variant_id, vcf, vcf_index_path)
 
@@ -172,7 +225,9 @@ def get_cohort_allele_frequency(
         alt_index -= 1
 
     # get index of participant to phenotypes
-    phenotype_index = get_patient_phenotype_index(phenotype_table, as_set=True)
+    phenotype_index = get_patient_phenotype_index(
+        phenotype_table, cached_dict=phenotype_index_path, as_set=True
+    )
 
     # create cohort, defaults to all patients in VCF
     cohort = (
