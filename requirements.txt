@@ -11,3 +11,7 @@ tqdm
 google-cloud-storage
 psutil
 setuptools
+
+# for cohort allele frequency generation
+firecloud
+pandas
